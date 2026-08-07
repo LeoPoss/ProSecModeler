@@ -250,6 +250,32 @@ export default function Home() {
 		}
 	};
 
+	const [comparisonHeight, setComparisonHeight] = useState(340);
+	const [isResizing, setIsResizing] = useState(false);
+
+	const handleMouseDownResize = (e: React.MouseEvent) => {
+		e.preventDefault();
+		setIsResizing(true);
+		const startY = e.clientY;
+		const startHeight = comparisonHeight;
+
+		const handleMouseMove = (moveEvent: MouseEvent) => {
+			const deltaY = startY - moveEvent.clientY;
+			const maxHeight = window.innerHeight * 0.8;
+			const newHeight = Math.max(100, Math.min(maxHeight, startHeight + deltaY));
+			setComparisonHeight(newHeight);
+		};
+
+		const handleMouseUp = () => {
+			setIsResizing(false);
+			window.removeEventListener("mousemove", handleMouseMove);
+			window.removeEventListener("mouseup", handleMouseUp);
+		};
+
+		window.addEventListener("mousemove", handleMouseMove);
+		window.addEventListener("mouseup", handleMouseUp);
+	};
+
 	return (
 		<div className="min-h-screen bg-white text-neutral-900">
 			<AppHeader
@@ -321,10 +347,18 @@ export default function Home() {
 					)}
 					{activeView === "editor" && (
 						<div
-							className="border-t border-neutral-200 bg-white flex flex-col z-20 shrink-0"
-							style={{ height: "340px" }}
+							className="border-t border-neutral-200 bg-white flex flex-col z-20 shrink-0 relative"
+							style={{ height: `${comparisonHeight}px` }}
 						>
-							<div className="h-[38px] px-4 bg-neutral-50 border-b border-neutral-200 flex items-center">
+							{/* Top drag handle indicator */}
+							<div
+								onMouseDown={handleMouseDownResize}
+								className="absolute top-0 left-0 right-0 h-3 -translate-y-1/2 cursor-ns-resize z-30 group flex items-center justify-center hover:bg-blue-500/10 transition-colors"
+								title="Drag to resize panel height"
+							>
+								<div className="w-12 h-1.5 bg-neutral-300 group-hover:bg-neutral-600 rounded-full transition-colors" />
+							</div>
+							<div className="h-[38px] px-4 bg-neutral-50 border-b border-neutral-200 flex items-center shrink-0 select-none">
 								<span className="text-sm font-semibold text-neutral-900">
 									Comparison
 								</span>

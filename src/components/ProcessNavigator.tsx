@@ -40,7 +40,7 @@ function ProcessNavigator({
 								}}
 							/>
 						</div>
-						<span className="text-[10px] text-neutral-500 tabular-nums">
+						<span className="text-xs text-neutral-500 tabular-nums">
 							{overallProgress.percentage}%
 						</span>
 					</div>
@@ -125,7 +125,7 @@ function ProcessNavigator({
 				)}
 			</div>
 			<div
-				className="px-3 py-2 text-[10px] text-neutral-500 text-center"
+				className="px-3 py-2 text-xs text-neutral-500 text-center"
 				style={{ borderTop: "1px solid #ebebeb" }}
 			>
 				<kbd

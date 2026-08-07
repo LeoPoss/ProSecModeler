@@ -38,8 +38,11 @@ export default function DeleteProcessConfirmDialog({
 								Delete Process Model
 							</Dialog.Title>
 							<Dialog.Description className="text-xs text-neutral-500 mt-2 leading-relaxed">
-								Delete <span className="font-semibold text-neutral-900">{processName}</span>?
-								All audit assessments, answers and elements linked to this
+								Delete{" "}
+								<span className="font-semibold text-neutral-900">
+									{processName}
+								</span>
+								? All audit assessments, answers and elements linked to this
 								process will be permanently removed. This action cannot be
 								undone.
 							</Dialog.Description>

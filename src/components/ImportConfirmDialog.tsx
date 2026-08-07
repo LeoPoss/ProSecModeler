@@ -36,8 +36,8 @@ export default function ImportConfirmDialog({
 								Import Process Model
 							</Dialog.Title>
 							<Dialog.Description className="text-xs text-neutral-500 mt-2 leading-relaxed">
-								Process models are saved publicly on the server and visible
-								to all users. Continue to select a BPMN file to import.
+								Process models are saved publicly on the server and visible to
+								all users. Continue to select a BPMN file to import.
 							</Dialog.Description>
 						</div>
 						<Dialog.Close asChild>

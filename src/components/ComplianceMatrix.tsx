@@ -164,14 +164,7 @@ export default function ComplianceMatrix() {
 																{req.bpmn_annotation}
 															</span>
 															{req.external_id && (
-																<span
-																	className="text-[10px] font-mono text-neutral-500"
-																	style={{
-																		background: "#fafafa",
-																		padding: "1px 4px",
-																		borderRadius: "3px",
-																	}}
-																>
+																<span className="text-xs font-mono text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded">
 																	{req.external_id}
 																</span>
 															)}
@@ -180,13 +173,7 @@ export default function ComplianceMatrix() {
 															{req.requirement}
 														</p>
 														<div className="flex items-center gap-2">
-															<span
-																className="text-[10px] px-2 py-0.5 rounded-full"
-																style={{
-																	background: "#ebf5ff",
-																	color: "#0068d6",
-																}}
-															>
+															<span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
 																{req.subcategory || "General"}
 															</span>
 															<code

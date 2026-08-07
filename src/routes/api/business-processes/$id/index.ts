@@ -83,7 +83,9 @@ export const Route = createFileRoute("/api/business-processes/$id/")({
 					existing.processName === "Sensor Data Collection Demo"
 				) {
 					return new Response(
-						JSON.stringify({ error: "Cannot delete the default process model" }),
+						JSON.stringify({
+							error: "Cannot delete the default process model",
+						}),
 						{
 							status: 403,
 							headers: { "Content-Type": "application/json" },
@@ -91,9 +93,7 @@ export const Route = createFileRoute("/api/business-processes/$id/")({
 					);
 				}
 
-				db.delete(businessProcesses)
-					.where(eq(businessProcesses.id, id))
-					.run();
+				db.delete(businessProcesses).where(eq(businessProcesses.id, id)).run();
 
 				return new Response(null, { status: 204 });
 			},

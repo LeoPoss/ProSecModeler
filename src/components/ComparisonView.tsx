@@ -3,6 +3,7 @@ import {
 	MagnifyingGlassIcon,
 	PlusIcon,
 	WarningIcon,
+	XIcon,
 } from "@phosphor-icons/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
@@ -326,6 +327,7 @@ export default function ComparisonView() {
 					<div className="flex flex-col gap-3 w-full">
 						{!tbo.length && (
 							<button
+								type="button"
 								onClick={() => create("To-Be")}
 								disabled={loading}
 								className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-neutral-900 text-white hover:bg-black rounded-md"
@@ -336,6 +338,7 @@ export default function ComparisonView() {
 						)}
 						{!aio.length && (
 							<button
+								type="button"
 								onClick={() => create("As-Is")}
 								disabled={loading}
 								className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-neutral-900 text-white hover:bg-black rounded-md"
@@ -351,87 +354,107 @@ export default function ComparisonView() {
 
 	return (
 		<div className="h-full overflow-y-auto bg-white text-neutral-900 font-sans">
-			<style>{`
-				.gap-row td { border-bottom: 0.5px solid #ebebeb; }
-				.gap-row:last-child td { border-bottom: none; }
-				.mono { font-family: 'Geist Mono','Courier New',monospace; font-size: 11px; }
-			`}</style>
 			<div className="max-w-3xl mx-auto px-6 py-6">
-				<div className="flex items-center justify-end gap-2 text-xs mb-4">
-					<span className="text-neutral-500">Target:</span>
-					<select
-						value={toBeId || ""}
-						onChange={(e) => setToBeId(parseInt(e.target.value, 10))}
-						className="bg-transparent border-b border-dashed border-neutral-900 font-bold outline-none cursor-pointer"
-					>
-						{tbo.map((o, i) => {
-							const label = tbo.length > 1 ? `To-Be ${i + 1}` : "To-Be";
-							return (
-								<option key={o.id} value={o.id}>
-									{label}
-								</option>
-							);
-						})}
-					</select>
-					<span className="text-neutral-300">·</span>
-					<span className="text-neutral-500">Actual:</span>
-					<select
-						value={asIsId || ""}
-						onChange={(e) => setAsIsId(parseInt(e.target.value, 10))}
-						className="bg-transparent border-b border-dashed border-neutral-900 font-bold outline-none cursor-pointer"
-					>
-						{aio.map((o, i) => {
-							const label = aio.length > 1 ? `As-Is ${i + 1}` : "As-Is";
-							return (
-								<option key={o.id} value={o.id}>
-									{label}
-								</option>
-							);
-						})}
-					</select>
+				{/* Top bar controls */}
+				<div className="flex items-center justify-between gap-2 text-xs mb-4 pb-3 border-b border-neutral-200">
+					<div className="flex items-center gap-3 text-xs font-semibold">
+						<span className="text-neutral-900">
+							{stats.tt} Requirement Targets
+						</span>
+						<span className="w-px h-3.5 bg-neutral-200" />
+						<span className="text-red-700 font-bold">
+							{stats.gp} Compliance Gaps
+						</span>
+					</div>
+					<div className="flex items-center gap-2">
+						<span className="text-neutral-500 font-medium">Target:</span>
+						<select
+							value={toBeId || ""}
+							onChange={(e) => setToBeId(parseInt(e.target.value, 10))}
+							className="bg-neutral-50 border border-neutral-200 rounded px-2 py-1 text-xs font-semibold outline-none cursor-pointer focus:ring-1 focus:ring-neutral-900"
+						>
+							{tbo.map((o, i) => {
+								const label = tbo.length > 1 ? `To-Be ${i + 1}` : "To-Be";
+								return (
+									<option key={o.id} value={o.id}>
+										{label}
+									</option>
+								);
+							})}
+						</select>
+						<span className="text-neutral-300">·</span>
+						<span className="text-neutral-500 font-medium">Actual:</span>
+						<select
+							value={asIsId || ""}
+							onChange={(e) => setAsIsId(parseInt(e.target.value, 10))}
+							className="bg-neutral-50 border border-neutral-200 rounded px-2 py-1 text-xs font-semibold outline-none cursor-pointer focus:ring-1 focus:ring-neutral-900"
+						>
+							{aio.map((o, i) => {
+								const label = aio.length > 1 ? `As-Is ${i + 1}` : "As-Is";
+								return (
+									<option key={o.id} value={o.id}>
+										{label}
+									</option>
+								);
+							})}
+						</select>
+					</div>
 				</div>
 
-				<div className="flex items-center justify-between gap-4 mb-4 border-b border-neutral-200 pb-2">
-					<div className="flex items-center gap-3 text-[10px] font-bold">
-						<span>{stats.tt} targets</span>
-						<span className="w-px h-3 bg-neutral-200" />
-						<span className="text-red-700">{stats.gp} gaps</span>
+				{/* Filter & Search Bar */}
+				<div className="flex items-center justify-between gap-4 mb-5">
+					<div className="flex items-center gap-1.5">
+						{["All", "Gaps"].map((k) => {
+							const isActive = filter === k.toLowerCase();
+							return (
+								<button
+									type="button"
+									key={k}
+									onClick={() => setFilter(k.toLowerCase() as typeof filter)}
+									className={`text-xs font-medium px-2.5 py-1 rounded transition-colors ${
+										isActive
+											? k === "Gaps"
+												? "bg-red-50 text-red-700 font-bold border border-red-200"
+												: "bg-neutral-900 text-white font-bold"
+											: "text-neutral-500 bg-neutral-100 hover:bg-neutral-200"
+									}`}
+								>
+									{k} ({k === "All" ? stats.tt : stats.gp})
+								</button>
+							);
+						})}
 					</div>
-					<div className="flex items-center gap-1">
-						<div className="relative mr-2">
-							<MagnifyingGlassIcon className="w-3 h-3 absolute left-1.5 top-1/2 -translate-y-1/2 text-neutral-300" />
-							<input
-								placeholder="Filter..."
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-								className="w-24 pl-6 pr-2 py-0.5 text-[10px] rounded border border-neutral-200 outline-none bg-neutral-50"
-							/>
-						</div>
-						{["All", "Gaps"].map((k) => (
+
+					<div className="relative flex items-center">
+						<MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2.5 text-neutral-400 pointer-events-none" />
+						<input
+							type="text"
+							placeholder="Search requirements (Press Esc to clear)..."
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Escape") setSearch("");
+							}}
+							className="w-56 pl-8 pr-7 py-1 text-xs rounded border border-neutral-200 outline-none bg-neutral-50 focus:bg-white focus:ring-1 focus:ring-neutral-900 transition-all"
+						/>
+						{search && (
 							<button
-								key={k}
-								onClick={() => setFilter(k.toLowerCase() as typeof filter)}
-								className="text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors"
-								style={
-									filter === k.toLowerCase()
-										? {
-												color: k === "Gaps" ? "#b91c1c" : "#171717",
-												background: "#fafafa",
-												fontWeight: 700,
-											}
-										: { color: "#999" }
-								}
+								type="button"
+								onClick={() => setSearch("")}
+								className="absolute right-2 text-neutral-400 hover:text-neutral-700 p-0.5 rounded-full"
+								aria-label="Clear search"
 							>
-								{k} {k === "All" ? stats.tt : stats.gp}
+								<XIcon className="w-3 h-3" />
 							</button>
-						))}
+						)}
 					</div>
 				</div>
 
+				{/* Main Data Table View */}
 				{loading ? (
 					<div className="flex flex-col items-center justify-center py-16">
 						<div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin mb-2" />
-						<p className="text-[10px] text-neutral-400">Comparing...</p>
+						<p className="text-xs text-neutral-400">Comparing sessions...</p>
 					</div>
 				) : filtered.length > 0 ? (
 					<div className="space-y-6">
@@ -440,28 +463,28 @@ export default function ComparisonView() {
 							return (
 								<div
 									key={g.elementId}
-									className="bg-white rounded-lg border border-neutral-200 overflow-hidden shadow-sm"
+									className="bg-white rounded-lg border border-neutral-200 overflow-hidden shadow-xs"
 								>
-									<div className="flex items-center gap-2 px-4 py-2 bg-neutral-50 border-b border-neutral-200">
+									<div className="flex items-center gap-2 px-4 py-2.5 bg-neutral-50 border-b border-neutral-200">
 										<TypeIcon type={g.elementType} />
 										<span className="text-xs font-bold text-neutral-900">
 											{g.elementName}
 										</span>
-										<div className="flex gap-3 ml-auto text-[10px] font-bold">
+										<div className="flex items-center gap-2 ml-auto text-xs font-semibold">
 											{g.gapCount > 0 && (
-												<span className="text-red-700">
+												<span className="bg-red-50 text-red-700 px-2 py-0.5 rounded border border-red-200 text-xs">
 													{g.gapCount} gap{g.gapCount > 1 ? "s" : ""}
 												</span>
 											)}
 											{g.alignedCount > 0 && (
-												<span className="text-neutral-400">
-													{g.alignedCount}
+												<span className="text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded text-xs">
+													{g.alignedCount} aligned
 												</span>
 											)}
 										</div>
 									</div>
 									{ax.length > 0 ? (
-										<table className="w-full table-fixed">
+										<table className="w-full table-fixed text-left divide-y divide-neutral-100">
 											<tbody>
 												{ax.map((i) => (
 													<Row key={i.requirementId} item={i} />
@@ -474,9 +497,20 @@ export default function ComparisonView() {
 						})}
 					</div>
 				) : (
-					<div className="flex flex-col items-center justify-center py-16 text-center">
-						<MagnifyingGlassIcon className="w-4 h-4 text-neutral-300 mb-2" />
-						<p className="text-[10px] text-neutral-400">No matching items.</p>
+					<div className="flex flex-col items-center justify-center py-16 text-center bg-neutral-50 rounded-lg border border-dashed border-neutral-200">
+						<MagnifyingGlassIcon className="w-5 h-5 text-neutral-300 mb-2" />
+						<p className="text-xs text-neutral-500 font-medium">
+							No matching requirements found.
+						</p>
+						{search && (
+							<button
+								type="button"
+								onClick={() => setSearch("")}
+								className="mt-2 text-xs text-blue-600 hover:underline"
+							>
+								Clear search filter
+							</button>
+						)}
 					</div>
 				)}
 			</div>
@@ -485,29 +519,33 @@ export default function ComparisonView() {
 }
 
 function Row({ item }: { item: ComparisonItem }) {
-	const gapColor = item.status === "gap" ? "#b91c1c" : undefined;
+	const isGap = item.status === "gap";
 
 	return (
-		<tr className="gap-row hover:bg-neutral-50/50 transition-colors">
-			<td className="py-1.5 pl-4 pr-2 w-[40%]">
-				<span className="text-[10px] text-neutral-400 mono mr-1.5">
+		<tr className="hover:bg-neutral-50/80 transition-colors border-b border-neutral-100 last:border-b-0">
+			<td className="py-2.5 pl-4 pr-2 w-[42%]">
+				<span className="font-mono text-xs text-neutral-400 mr-2">
 					{item.externalId}
 				</span>
-				<span className="font-bold text-neutral-900 text-[11px]">
+				<span className="font-semibold text-neutral-900 text-xs">
 					{item.label}
 				</span>
 			</td>
-			<td
-				className="py-1.5 px-2 mono w-[27%]"
-				style={{
-					color: gapColor,
-					fontWeight: item.status === "gap" ? 600 : undefined,
-				}}
-			>
-				{fv(item.asIsValue)}
+			<td className="py-2.5 px-2 font-mono text-xs w-[25%]">
+				<span
+					className={
+						isGap
+							? "text-red-700 font-bold bg-red-50 px-1.5 py-0.5 rounded"
+							: "text-neutral-700"
+					}
+				>
+					{fv(item.asIsValue)}
+				</span>
 			</td>
-			<td className="py-1.5 px-2 text-neutral-300 text-center w-6">→</td>
-			<td className="py-1.5 pr-4 pl-2 mono font-semibold w-[27%]">
+			<td className="py-2.5 px-1 text-neutral-300 text-center w-6 text-xs">
+				→
+			</td>
+			<td className="py-2.5 pr-4 pl-2 font-mono text-xs font-semibold w-[25%] text-neutral-900">
 				{fv(item.toBeValue)}
 			</td>
 		</tr>

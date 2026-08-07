@@ -10,31 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiRegulationStandardsRouteImport } from './routes/api/regulation-standards'
-import { Route as ApiEvaluationAttributesRouteImport } from './routes/api/evaluation-attributes'
-import { Route as ApiBusinessProcessesRouteImport } from './routes/api/business-processes'
 import { Route as ApiAuditAssessmentsRouteImport } from './routes/api/audit-assessments'
-import { Route as ApiBusinessProcessesIdIndexRouteImport } from './routes/api/business-processes/$id/index'
+import { Route as ApiBusinessProcessesRouteImport } from './routes/api/business-processes'
+import { Route as ApiEvaluationAttributesRouteImport } from './routes/api/evaluation-attributes'
+import { Route as ApiRegulationStandardsRouteImport } from './routes/api/regulation-standards'
 import { Route as ApiAuditAssessmentsIdValuesRouteImport } from './routes/api/audit-assessments/$id/values'
+import { Route as ApiBusinessProcessesIdIndexRouteImport } from './routes/api/business-processes/$id/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRegulationStandardsRoute = ApiRegulationStandardsRouteImport.update({
-  id: '/api/regulation-standards',
-  path: '/api/regulation-standards',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiEvaluationAttributesRoute = ApiEvaluationAttributesRouteImport.update({
-  id: '/api/evaluation-attributes',
-  path: '/api/evaluation-attributes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBusinessProcessesRoute = ApiBusinessProcessesRouteImport.update({
-  id: '/api/business-processes',
-  path: '/api/business-processes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuditAssessmentsRoute = ApiAuditAssessmentsRouteImport.update({
@@ -42,17 +27,32 @@ const ApiAuditAssessmentsRoute = ApiAuditAssessmentsRouteImport.update({
   path: '/api/audit-assessments',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBusinessProcessesIdIndexRoute =
-  ApiBusinessProcessesIdIndexRouteImport.update({
-    id: '/$id/',
-    path: '/$id/',
-    getParentRoute: () => ApiBusinessProcessesRoute,
-  } as any)
+const ApiBusinessProcessesRoute = ApiBusinessProcessesRouteImport.update({
+  id: '/api/business-processes',
+  path: '/api/business-processes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEvaluationAttributesRoute = ApiEvaluationAttributesRouteImport.update({
+  id: '/api/evaluation-attributes',
+  path: '/api/evaluation-attributes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRegulationStandardsRoute = ApiRegulationStandardsRouteImport.update({
+  id: '/api/regulation-standards',
+  path: '/api/regulation-standards',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuditAssessmentsIdValuesRoute =
   ApiAuditAssessmentsIdValuesRouteImport.update({
     id: '/$id/values',
     path: '/$id/values',
     getParentRoute: () => ApiAuditAssessmentsRoute,
+  } as any)
+const ApiBusinessProcessesIdIndexRoute =
+  ApiBusinessProcessesIdIndexRouteImport.update({
+    id: '/$id/',
+    path: '/$id/',
+    getParentRoute: () => ApiBusinessProcessesRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -130,18 +130,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/regulation-standards': {
-      id: '/api/regulation-standards'
-      path: '/api/regulation-standards'
-      fullPath: '/api/regulation-standards'
-      preLoaderRoute: typeof ApiRegulationStandardsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/evaluation-attributes': {
-      id: '/api/evaluation-attributes'
-      path: '/api/evaluation-attributes'
-      fullPath: '/api/evaluation-attributes'
-      preLoaderRoute: typeof ApiEvaluationAttributesRouteImport
+    '/api/audit-assessments': {
+      id: '/api/audit-assessments'
+      path: '/api/audit-assessments'
+      fullPath: '/api/audit-assessments'
+      preLoaderRoute: typeof ApiAuditAssessmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/business-processes': {
@@ -151,19 +144,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBusinessProcessesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/audit-assessments': {
-      id: '/api/audit-assessments'
-      path: '/api/audit-assessments'
-      fullPath: '/api/audit-assessments'
-      preLoaderRoute: typeof ApiAuditAssessmentsRouteImport
+    '/api/evaluation-attributes': {
+      id: '/api/evaluation-attributes'
+      path: '/api/evaluation-attributes'
+      fullPath: '/api/evaluation-attributes'
+      preLoaderRoute: typeof ApiEvaluationAttributesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/business-processes/$id/': {
-      id: '/api/business-processes/$id/'
-      path: '/$id'
-      fullPath: '/api/business-processes/$id/'
-      preLoaderRoute: typeof ApiBusinessProcessesIdIndexRouteImport
-      parentRoute: typeof ApiBusinessProcessesRoute
+    '/api/regulation-standards': {
+      id: '/api/regulation-standards'
+      path: '/api/regulation-standards'
+      fullPath: '/api/regulation-standards'
+      preLoaderRoute: typeof ApiRegulationStandardsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/audit-assessments/$id/values': {
       id: '/api/audit-assessments/$id/values'
@@ -171,6 +164,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/audit-assessments/$id/values'
       preLoaderRoute: typeof ApiAuditAssessmentsIdValuesRouteImport
       parentRoute: typeof ApiAuditAssessmentsRoute
+    }
+    '/api/business-processes/$id/': {
+      id: '/api/business-processes/$id/'
+      path: '/$id'
+      fullPath: '/api/business-processes/$id/'
+      preLoaderRoute: typeof ApiBusinessProcessesIdIndexRouteImport
+      parentRoute: typeof ApiBusinessProcessesRoute
     }
   }
 }

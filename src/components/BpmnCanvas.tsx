@@ -448,15 +448,12 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 					</div>
 				)}
 				{error && (
-					<div
-						className="absolute inset-0 flex items-center justify-center z-10"
-						style={{ background: "#fef2f2" }}
-					>
+					<div className="absolute inset-0 flex items-center justify-center z-10 bg-red-50">
 						<div className="text-center p-6">
-							<p className="font-semibold mb-2" style={{ color: "#dc2626" }}>
+							<p className="font-semibold mb-2 text-red-600">
 								Failed to load BPMN viewer
 							</p>
-							<p className="text-sm" style={{ color: "#b91c1c" }}>
+							<p className="text-sm text-red-700">
 								{error}
 							</p>
 						</div>

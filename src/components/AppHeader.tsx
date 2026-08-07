@@ -37,11 +37,16 @@ export default function AppHeader({
 	isLoading,
 }: AppHeaderProps) {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+	const [deleteTarget, setDeleteTarget] = useState<{
+		id: number;
+		name: string;
+	} | null>(null);
 	const [importDialogOpen, setImportDialogOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const activeProcess = businessProcesses.find((bp) => bp.id === activeBusinessProcessId);
+	const activeProcess = businessProcesses.find(
+		(bp) => bp.id === activeBusinessProcessId,
+	);
 	return (
 		<header
 			className="sticky top-0 z-50 bg-white"
@@ -125,12 +130,12 @@ export default function AppHeader({
 					color: #0068d6;
 				}
 				.select-item-delete {
-					color: #e00;
+					color: #dc2626;
 					font-weight: 600;
 				}
 				.select-item-delete[data-highlighted] {
 					background-color: #fef2f2;
-					color: #e00;
+					color: #dc2626;
 				}
 				.select-item-indicator {
 					position: absolute;
@@ -172,7 +177,7 @@ export default function AppHeader({
 						className="flex items-center gap-1.5 bg-neutral-50 p-1 rounded-md"
 						style={{ boxShadow: "rgba(0, 0, 0, 0.08) 0px 0px 0px 1px" }}
 					>
-						<span className="text-[10px] font-bold text-neutral-500 px-1.5 hidden md:inline">
+						<span className="text-xs font-bold text-neutral-500 px-1.5 hidden md:inline">
 							Process
 						</span>
 						<Select.Root
@@ -180,7 +185,10 @@ export default function AppHeader({
 							onValueChange={(val) => {
 								if (val === "delete") {
 									if (activeProcess) {
-										setDeleteTarget({ id: activeProcess.id, name: activeProcess.name });
+										setDeleteTarget({
+											id: activeProcess.id,
+											name: activeProcess.name,
+										});
 										setDeleteDialogOpen(true);
 									}
 									return;
@@ -219,9 +227,12 @@ export default function AppHeader({
 													className="select-item select-item-delete"
 												>
 													<Select.ItemText>
-															<TrashIcon className="w-3 h-3 inline mr-1.5" weight="bold" />
-															Delete "{activeProcess.name}"
-														</Select.ItemText>
+														<TrashIcon
+															className="w-3 h-3 inline mr-1.5"
+															weight="bold"
+														/>
+														Delete "{activeProcess.name}"
+													</Select.ItemText>
 												</Select.Item>
 											</>
 										)}
@@ -257,7 +268,7 @@ export default function AppHeader({
 						className="flex items-center gap-1.5 bg-neutral-50 p-1 rounded-md"
 						style={{ boxShadow: "rgba(0, 0, 0, 0.08) 0px 0px 0px 1px" }}
 					>
-						<span className="text-[10px] font-bold text-neutral-500 px-1.5 hidden md:inline">
+						<span className="text-xs font-bold text-neutral-500 px-1.5 hidden md:inline">
 							Session
 						</span>
 						<Select.Root

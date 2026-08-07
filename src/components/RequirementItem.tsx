@@ -75,7 +75,7 @@ export default function RequirementItem({
 				</div>
 				<div className="flex-1 min-w-0">
 					{subcategory && (
-						<span className="text-[10px] font-medium text-neutral-500 mb-1 block">
+						<span className="text-xs font-medium text-neutral-500 mb-1 block">
 							{subcategory}
 						</span>
 					)}
@@ -84,14 +84,7 @@ export default function RequirementItem({
 							{req.bpmn_annotation}
 						</span>
 						{req.external_id && (
-							<span
-								className="text-[10px] font-mono text-neutral-500 shrink-0"
-								style={{
-									background: "#fafafa",
-									padding: "1px 4px",
-									borderRadius: "3px",
-								}}
-							>
+							<span className="text-xs font-mono text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded shrink-0">
 								{req.external_id}
 							</span>
 						)}

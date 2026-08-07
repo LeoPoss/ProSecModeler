@@ -46,11 +46,11 @@ Collect Data → Transmit Securely → Data Received → Completed) with a defau
 
 ## Quick Start
 
-**Prerequisites:** Node.js ≥ 20
+**Prerequisites:** Node.js ≥ 20, pnpm
 
 ```bash
-npm install
-npm run dev:setup        # generates migrations, seeds DB, starts dev server
+pnpm install
+pnpm run dev:setup        # generates migrations, seeds DB, starts dev server
 ```
 
 Open http://localhost:3000/modeler/
@@ -58,11 +58,11 @@ Open http://localhost:3000/modeler/
 ### Step-by-step setup
 
 ```bash
-npm install
-npm run db:generate       # generate SQL migration from Drizzle schema
-npm run db:migrate        # apply migration to sra.db
-npm run db:seed           # populate ISVS requirements and demo process
-npm run dev               # start Vite dev server on port 3000
+pnpm install
+pnpm run db:generate       # generate SQL migration from Drizzle schema
+pnpm run db:migrate        # apply migration to sra.db
+pnpm run db:seed           # populate ISVS requirements and demo process
+pnpm run dev               # start Vite dev server on port 3000
 ```
 
 ### Docker
@@ -76,5 +76,5 @@ docker run -p 8080:80 sra
 
 1. Add entries to `src/lib/mapping.json` following the existing structure (id, requirement, question, category,
    subcategory, external_id, bpmn_mapping, further_specification, bpmn_annotation, bpmn_template).
-2. Run `npm run db:seed` to re-populate the database.
+2. Run `pnpm run db:seed` to re-populate the database.
 3. Update `src/lib/bpmn-extensions.ts` `CATEGORY_COLORS` if new categories need distinct visual styling.
