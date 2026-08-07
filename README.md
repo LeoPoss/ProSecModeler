@@ -1,16 +1,16 @@
-# SRA — Security-Aware BPMN Modeler
+# ProSec Modeler — Security-Aware BPMN Modeler
 
-A web-based tool for embedding security requirements directly into BPMN 2.0 process diagrams. SRA maps standard-specific
+A web-based tool for embedding security requirements directly into BPMN 2.0 process diagrams. ProSec Modeler maps standard-specific
 compliance criteria (e.g., [OWASP IoT Security Verification Standard](https://owasp.org/www-project-iot-security-verification-standard/) — ISVS v1.0) onto BPMN element types, letting
 auditors and process designers assess security posture in the same notation they use to model business processes.
 Dual-session comparison (As-Is vs. To-Be) surfaces compliance gaps, while automatic visual annotation keeps the diagram
 readable.
 
-![SRA Screenshot](screenshot.png)
+![ProSec Modeler Screenshot](screenshot.png)
 
 ## Architecture
 
-SRA models the relationship between security standards, process models, and audit evidence through a normalized
+ProSec Modeler models the relationship between security standards, process models, and audit evidence through a normalized
 relational schema (SQLite / Drizzle ORM):
 
 | Layer      | Table                              | Role |
