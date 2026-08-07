@@ -41,8 +41,7 @@ Each requirement carries an external ID, question text, input type (BooleanToggl
 mapping, and an annotation template. The mapping is defined in `src/lib/mapping.json` and can be extended with
 additional standards.
 
-The seed also creates a demo process ("Sensor Data Collection Demo") — a simple 4-step BPMN diagram (Sensor Trigger →
-Collect Data → Transmit Securely → Data Received → Completed) with a default To-Be assessment.
+The seed also creates a demo process ("Sensor Data Collection Demo") — a 4-step BPMN diagram (Sensor Trigger → Collect Data → Transmit Securely → Data Received → Completed) with a default To-Be assessment.
 
 ## Quick Start
 
@@ -72,9 +71,8 @@ docker build -t sra .
 docker run -p 8080:80 sra
 ```
 
-## Extending with Additional Standards
+## Extending with additional standards
 
-1. Add entries to `src/lib/mapping.json` following the existing structure (id, requirement, question, category,
-   subcategory, external_id, bpmn_mapping, further_specification, bpmn_annotation, bpmn_template).
+1. Add entries to `src/lib/mapping.json` following the existing schema.
 2. Run `pnpm run db:seed` to re-populate the database.
 3. Update `src/lib/bpmn-extensions.ts` `CATEGORY_COLORS` if new categories need distinct visual styling.

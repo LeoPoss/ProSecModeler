@@ -347,11 +347,12 @@ export default function AppHeader({
 						<button
 							type="button"
 							onClick={onToggleSidebar}
-							className="lg:hidden flex items-center justify-center w-9 h-9 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50"
+							className="lg:hidden flex items-center justify-center w-9 h-9 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-900"
 							style={{ borderRadius: "6px" }}
+							aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
 							title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
 						>
-							<ListIcon className="w-5 h-5" />
+							<ListIcon className="w-5 h-5" aria-hidden="true" />
 						</button>
 					)}
 
@@ -359,11 +360,12 @@ export default function AppHeader({
 						type="button"
 						onClick={onExport}
 						disabled={elementsCount === 0}
-						className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+						className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-neutral-900"
 						style={{ borderRadius: "6px" }}
+						aria-label="Export enriched BPMN"
 						title="Export enriched BPMN"
 					>
-						<DownloadIcon className="w-4 h-4" />
+						<DownloadIcon className="w-4 h-4" aria-hidden="true" />
 						<span>Export</span>
 					</button>
 
@@ -377,25 +379,27 @@ export default function AppHeader({
 						<button
 							type="button"
 							onClick={() => onViewChange("editor")}
-							className={`flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-md transition-all ${
+							className={`flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-md transition-all focus-visible:ring-2 focus-visible:ring-neutral-900 ${
 								activeView === "editor"
 									? "bg-white text-neutral-900 shadow-sm"
 									: "text-neutral-500 hover:text-neutral-900"
 							}`}
+							aria-label="Switch to Editor view"
 						>
-							<PencilSimpleIcon className="w-3.5 h-3.5" />
+							<PencilSimpleIcon className="w-3.5 h-3.5" aria-hidden="true" />
 							<span className="hidden sm:inline">Editor</span>
 						</button>
 						<button
 							type="button"
 							onClick={() => onViewChange("matrix")}
-							className={`flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-md transition-all ${
+							className={`flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-md transition-all focus-visible:ring-2 focus-visible:ring-neutral-900 ${
 								activeView === "matrix"
 									? "bg-white text-neutral-900 shadow-sm"
 									: "text-neutral-500 hover:text-neutral-900"
 							}`}
+							aria-label="Switch to Matrix view"
 						>
-							<GridFourIcon className="w-3.5 h-3.5" />
+							<GridFourIcon className="w-3.5 h-3.5" aria-hidden="true" />
 							<span className="hidden sm:inline">Matrix</span>
 						</button>
 					</div>
@@ -404,11 +408,12 @@ export default function AppHeader({
 						<button
 							type="button"
 							onClick={onReposition}
-							className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-md transition-colors"
+							className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-neutral-900"
 							style={{ borderRadius: "6px" }}
+							aria-label="Auto-arrange annotations"
 							title="Auto-arrange annotations"
 						>
-							<ArrowsOutIcon className="w-4 h-4" />
+							<ArrowsOutIcon className="w-4 h-4" aria-hidden="true" />
 							<span>Arrange</span>
 						</button>
 					)}
@@ -417,11 +422,12 @@ export default function AppHeader({
 						<button
 							type="button"
 							onClick={onReset}
-							className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+							className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-red-600"
 							style={{ borderRadius: "6px" }}
+							aria-label="Reset process model answers"
 							title="Reset process model answers"
 						>
-							<ArrowCounterClockwiseIcon className="w-4 h-4" />
+							<ArrowCounterClockwiseIcon className="w-4 h-4" aria-hidden="true" />
 							<span>Reset Model</span>
 						</button>
 					)}

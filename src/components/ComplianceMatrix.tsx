@@ -2,7 +2,7 @@
 
 import { CaretRightIcon, MinusIcon, XIcon } from "@phosphor-icons/react";
 import { useAtomValue } from "jotai";
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { BPMN_TYPE_ICONS, BPMN_TYPES } from "#/lib/constants";
 import {
 	answeredComplianceRequirementsAtom,
@@ -13,29 +13,21 @@ import type { ComplianceRequirement, GroupedRequirements } from "#/lib/types";
 export default function ComplianceMatrix() {
 	const answeredRequirements = useAtomValue(answeredComplianceRequirementsAtom);
 	const requirements = useAtomValue(complianceRequirementsAtom);
-	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-		new Set(
-			Object.keys(
-				requirements.reduce(
-					(acc, req) => {
-						const cat = req.category || "General";
-						acc[cat] = true;
-						return acc;
-					},
-					{} as Record<string, boolean>,
-				),
-			),
-		),
-	);
 
-	const groupedRequirements: GroupedRequirements = requirements.reduce(
-		(acc, req) => {
-			const category = req.category || "General";
-			if (!acc[category]) acc[category] = [];
-			acc[category].push(req);
-			return acc;
-		},
-		{} as GroupedRequirements,
+	const groupedRequirements = useMemo(() => {
+		return requirements.reduce(
+			(acc, req) => {
+				const category = req.category || "General";
+				if (!acc[category]) acc[category] = [];
+				acc[category].push(req);
+				return acc;
+			},
+			{} as GroupedRequirements,
+		);
+	}, [requirements]);
+
+	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() =>
+		new Set(Object.keys(groupedRequirements)),
 	);
 
 	const toggleCategory = (category: string) => {

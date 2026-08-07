@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
 	CheckCircleIcon,
 	CircleIcon,
@@ -43,7 +44,7 @@ export default function RequirementItem({
 	answer,
 	onAnswer,
 }: RequirementItemProps) {
-	const template = parseTemplate(req.bpmn_template);
+	const template = useMemo(() => parseTemplate(req.bpmn_template), [req.bpmn_template]);
 	const isAnswered = answer !== undefined;
 	const isNotRelevant = answer === null;
 

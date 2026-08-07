@@ -251,13 +251,13 @@ export default function Home() {
 	};
 
 	const [comparisonHeight, setComparisonHeight] = useState(340);
-	const [isResizing, setIsResizing] = useState(false);
+	const comparisonHeightRef = useRef(340);
+	comparisonHeightRef.current = comparisonHeight;
 
-	const handleMouseDownResize = (e: React.MouseEvent) => {
+	const handleMouseDownResize = useCallback((e: React.MouseEvent) => {
 		e.preventDefault();
-		setIsResizing(true);
 		const startY = e.clientY;
-		const startHeight = comparisonHeight;
+		const startHeight = comparisonHeightRef.current;
 
 		const handleMouseMove = (moveEvent: MouseEvent) => {
 			const deltaY = startY - moveEvent.clientY;
@@ -267,14 +267,13 @@ export default function Home() {
 		};
 
 		const handleMouseUp = () => {
-			setIsResizing(false);
 			window.removeEventListener("mousemove", handleMouseMove);
 			window.removeEventListener("mouseup", handleMouseUp);
 		};
 
 		window.addEventListener("mousemove", handleMouseMove);
 		window.addEventListener("mouseup", handleMouseUp);
-	};
+	}, []);
 
 	return (
 		<div className="min-h-screen bg-white text-neutral-900">
