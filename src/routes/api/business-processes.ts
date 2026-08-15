@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Result } from "better-result";
 import { desc } from "drizzle-orm";
 import { db } from "#/db/connection";
 import { businessProcesses } from "#/db/schema";
+import { DatabaseError, ValidationError } from "#/lib/errors";
 
 export const Route = createFileRoute("/api/business-processes")({
 	server: {
@@ -10,45 +12,104 @@ export const Route = createFileRoute("/api/business-processes")({
 				const url = new URL(request.url);
 				const latest = url.searchParams.get("latest");
 
-				if (latest === "true") {
-					const row = db
-						.select()
-						.from(businessProcesses)
-						.orderBy(desc(businessProcesses.id))
-						.limit(1)
-						.get();
-					return new Response(JSON.stringify(row || null), {
-						headers: { "Content-Type": "application/json" },
-					});
-				}
+				const queryResult = Result.try({
+					try: () => {
+						if (latest === "true") {
+							return db
+								.select()
+								.from(businessProcesses)
+								.orderBy(desc(businessProcesses.id))
+								.limit(1)
+								.get() || null;
+						}
+						return db
+							.select()
+							.from(businessProcesses)
+							.orderBy(desc(businessProcesses.id))
+							.all();
+					},
+					catch: (cause) =>
+						new DatabaseError({
+							message: "Failed to query business processes",
+							cause,
+						}),
+				});
 
-				const rows = db
-					.select()
-					.from(businessProcesses)
-					.orderBy(desc(businessProcesses.id))
-					.all();
-				return new Response(JSON.stringify(rows), {
-					headers: { "Content-Type": "application/json" },
+				return queryResult.match({
+					ok: (data) =>
+						new Response(JSON.stringify(data), {
+							headers: { "Content-Type": "application/json" },
+						}),
+					err: (error) =>
+						new Response(JSON.stringify({ error: error.message }), {
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						}),
 				});
 			},
 
 			POST: async ({ request }) => {
-				const body = (await request.json()) as {
-					processName: string;
-					bpmnDefinition?: string;
-				};
-				const created = db
-					.insert(businessProcesses)
-					.values({
-						processName: body.processName,
-						bpmnDefinition: body.bpmnDefinition || null,
-					})
-					.returning()
-					.get();
+				const parseResult = await Result.tryPromise({
+					try: () => request.json() as Promise<{
+						processName?: string;
+						bpmnDefinition?: string;
+					}>,
+					catch: (cause) =>
+						new ValidationError({
+							message: "Invalid JSON in request body",
+							issues: cause,
+						}),
+				});
 
-				return new Response(JSON.stringify(created), {
-					status: 201,
-					headers: { "Content-Type": "application/json" },
+				if (parseResult.isErr()) {
+					return new Response(
+						JSON.stringify({ error: parseResult.error.message }),
+						{
+							status: 400,
+							headers: { "Content-Type": "application/json" },
+						},
+					);
+				}
+
+				const body = parseResult.value;
+				if (!body.processName) {
+					return new Response(
+						JSON.stringify({ error: "processName is required" }),
+						{
+							status: 400,
+							headers: { "Content-Type": "application/json" },
+						},
+					);
+				}
+
+				const insertResult = Result.try({
+					try: () =>
+						db
+							.insert(businessProcesses)
+							.values({
+								processName: body.processName!,
+								bpmnDefinition: body.bpmnDefinition || null,
+							})
+							.returning()
+							.get(),
+					catch: (cause) =>
+						new DatabaseError({
+							message: "Failed to create business process",
+							cause,
+						}),
+				});
+
+				return insertResult.match({
+					ok: (created) =>
+						new Response(JSON.stringify(created), {
+							status: 201,
+							headers: { "Content-Type": "application/json" },
+						}),
+					err: (error) =>
+						new Response(JSON.stringify({ error: error.message }), {
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						}),
 				});
 			},
 		},

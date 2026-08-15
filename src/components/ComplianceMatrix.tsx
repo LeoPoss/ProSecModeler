@@ -15,15 +15,13 @@ export default function ComplianceMatrix() {
 	const requirements = useAtomValue(complianceRequirementsAtom);
 
 	const groupedRequirements = useMemo(() => {
-		return requirements.reduce(
-			(acc, req) => {
-				const category = req.category || "General";
-				if (!acc[category]) acc[category] = [];
-				acc[category].push(req);
-				return acc;
-			},
-			{} as GroupedRequirements,
-		);
+		const result: GroupedRequirements = {};
+		for (const req of requirements) {
+			const category = req.category || "General";
+			if (!result[category]) result[category] = [];
+			result[category].push(req);
+		}
+		return result;
 	}, [requirements]);
 
 	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() =>
@@ -37,8 +35,15 @@ export default function ComplianceMatrix() {
 		setExpandedCategories(next);
 	};
 
-	const isApplicable = (req: ComplianceRequirement, typeKey: string) => {
-		return req.bpmn_mapping[typeKey as keyof typeof req.bpmn_mapping];
+	const isApplicable = (
+		req: ComplianceRequirement,
+		typeKey: string,
+	): boolean => {
+		if (typeKey === "task") return req.bpmn_mapping.task;
+		if (typeKey === "message_event") return req.bpmn_mapping.message_event;
+		if (typeKey === "pool") return req.bpmn_mapping.pool;
+		if (typeKey === "lane") return req.bpmn_mapping.lane;
+		return false;
 	};
 
 	return (

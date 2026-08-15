@@ -102,7 +102,7 @@ export default function Home() {
 
 	const handleAnswer = async (
 		reqId: string,
-		value: string | boolean | null,
+		value: string | boolean | null | undefined,
 	) => {
 		if (!selected || !modeler) return;
 		const req = store.getComplianceRequirements().find((r) => r.id === reqId);
@@ -114,10 +114,12 @@ export default function Home() {
 			selected.type,
 			selected.name,
 		);
-		const elementRegistry = modeler.get("elementRegistry") as any;
+		const elementRegistry = modeler.get("elementRegistry") as {
+			get: (id: string) => any;
+		};
 		const bpmnElement = elementRegistry.get(selected.id);
 		if (bpmnElement) {
-			await createSecurityDataObject(modeler, bpmnElement, req, value);
+			await createSecurityDataObject(modeler, bpmnElement, req, value ?? null);
 		}
 	};
 
@@ -215,8 +217,10 @@ export default function Home() {
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			const tag = (e.target as HTMLElement)?.tagName;
-			if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+			if (e.target instanceof HTMLElement) {
+				const tag = e.target.tagName;
+				if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+			}
 			if (e.key === "ArrowLeft") {
 				e.preventDefault();
 				goToPrevElement();

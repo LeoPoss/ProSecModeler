@@ -1,9 +1,26 @@
-import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR } from "./constants";
+import { getCategoryColor } from "./constants";
 import { store } from "./store";
 import type {
 	AnsweredComplianceRequirement as AnsweredRequirement,
 	ComplianceRequirement as Requirement,
 } from "./types";
+
+export interface ElementBounds {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+export interface ElementSize {
+	width: number;
+	height: number;
+}
+
+export interface Position {
+	x: number;
+	y: number;
+}
 
 function slugify(text: string): string {
 	return text
@@ -21,14 +38,9 @@ function formatSecurityAnnotation(
 }
 
 /**
- * Get the bounds of an element from its shape data.
+ * Get the bounds of an element from its diagram data.
  */
-function getElementBounds(element: any): {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-} {
+function getElementBounds(element: any): ElementBounds {
 	return {
 		x: element.x ?? 0,
 		y: element.y ?? 0,
@@ -51,7 +63,7 @@ function findParentContainer(element: any): any | null {
 }
 
 /**
- * Find the parent to create shapes inside.
+ * Find the parent to create visual elements inside.
  *
  * For task/event elements, the semantic parent (businessObject.$parent)
  * is always the Process — use that. For pool/lane elements, bpmn-js
@@ -69,7 +81,7 @@ function findCreateParent(
 
 	if (isPoolOrLane) return element;
 
-	// If the element has a visual parent container shape (like a Participant/Pool or SubProcess), use it
+	// If the element has a visual parent container (like a Participant/Pool or SubProcess), use it
 	if (element.parent) {
 		return element.parent;
 	}
@@ -77,8 +89,8 @@ function findCreateParent(
 	// For flow elements fallback: use semantic parent (Process or SubProcess)
 	const processBo = element.businessObject?.$parent;
 	if (processBo) {
-		const shape = elementRegistry.get(processBo.id);
-		if (shape) return shape;
+		const targetNode = elementRegistry.get(processBo.id);
+		if (targetNode) return targetNode;
 	}
 
 	// Bare Process diagram (no Collaboration) — rootElement IS the Process
@@ -96,10 +108,7 @@ function findCreateParent(
 /**
  * Estimate the rendered size of a text annotation based on its text content.
  */
-function estimateAnnotationSize(text: string): {
-	width: number;
-	height: number;
-} {
+function estimateAnnotationSize(text: string): ElementSize {
 	const lines = text.split("\n");
 	const longestLine = Math.max(...lines.map((l) => l.length));
 	return {
@@ -109,14 +118,13 @@ function estimateAnnotationSize(text: string): {
 }
 
 /**
- * Collect bounding boxes of all non-annotation, non-data-object shapes for collision detection.
+ * Collect bounding boxes of all non-annotation, non-data-object elements for collision detection.
  */
 function collectOccupiedBounds(
 	elementRegistry: any,
-): Array<{ x: number; y: number; width: number; height: number }> {
+): ElementBounds[] {
 	const allElements = elementRegistry.getAll();
-	const bounds: Array<{ x: number; y: number; width: number; height: number }> =
-		[];
+	const bounds: ElementBounds[] = [];
 
 	for (const el of allElements) {
 		if (el.type === "bpmn:TextAnnotation") continue;
@@ -150,8 +158,8 @@ function collectOccupiedBounds(
  * Check if two rectangles overlap (with padding).
  */
 function rectsOverlap(
-	a: { x: number; y: number; width: number; height: number },
-	b: { x: number; y: number; width: number; height: number },
+	a: ElementBounds,
+	b: ElementBounds,
 	padding = 10,
 ): boolean {
 	return !(
@@ -163,44 +171,34 @@ function rectsOverlap(
 }
 
 /**
- * Find a position for a shape that doesn't overlap with occupied bounds.
+ * Find a position for an element that doesn't overlap with occupied bounds.
  */
 function findNonOverlappingPosition(
-	targetBounds: { x: number; y: number; width: number; height: number },
-	shapeSize: { width: number; height: number },
-	occupiedBounds: Array<{
-		x: number;
-		y: number;
-		width: number;
-		height: number;
-	}>,
-	existingShapeBounds: Array<{
-		x: number;
-		y: number;
-		width: number;
-		height: number;
-	}>,
-): { x: number; y: number } {
+	targetBounds: ElementBounds,
+	elementSize: ElementSize,
+	occupiedBounds: ElementBounds[],
+	existingPlacedBounds: ElementBounds[],
+): Position {
 	const gap = 20;
-	const allBounds = [...occupiedBounds, ...existingShapeBounds];
+	const allBounds = [...occupiedBounds, ...existingPlacedBounds];
 
-	const candidates = [
+	const candidates: Position[] = [
 		{ x: targetBounds.x + targetBounds.width + gap, y: targetBounds.y },
 		{
 			x: targetBounds.x + targetBounds.width + gap,
-			y: targetBounds.y - shapeSize.height - gap,
+			y: targetBounds.y - elementSize.height - gap,
 		},
 		{ x: targetBounds.x, y: targetBounds.y + targetBounds.height + gap },
-		{ x: targetBounds.x, y: targetBounds.y - shapeSize.height - gap },
-		{ x: targetBounds.x - shapeSize.width - gap, y: targetBounds.y },
+		{ x: targetBounds.x, y: targetBounds.y - elementSize.height - gap },
+		{ x: targetBounds.x - elementSize.width - gap, y: targetBounds.y },
 	];
 
 	for (const pos of candidates) {
-		const rect = {
+		const rect: ElementBounds = {
 			x: pos.x,
 			y: pos.y,
-			width: shapeSize.width,
-			height: shapeSize.height,
+			width: elementSize.width,
+			height: elementSize.height,
 		};
 		if (!allBounds.some((b) => rectsOverlap(rect, b))) {
 			return pos;
@@ -210,12 +208,12 @@ function findNonOverlappingPosition(
 	const bestX = candidates[0].x;
 	let bestY = candidates[0].y;
 	for (let attempt = 0; attempt < 8; attempt++) {
-		bestY -= shapeSize.height + 10;
-		const rect = {
+		bestY -= elementSize.height + 10;
+		const rect: ElementBounds = {
 			x: bestX,
 			y: bestY,
-			width: shapeSize.width,
-			height: shapeSize.height,
+			width: elementSize.width,
+			height: elementSize.height,
 		};
 		if (!allBounds.some((b) => rectsOverlap(rect, b))) break;
 	}
@@ -224,12 +222,12 @@ function findNonOverlappingPosition(
 }
 
 /**
- * Expand the parent pool/lane if a shape extends beyond container boundaries.
+ * Expand the parent pool/lane if an element extends beyond container boundaries.
  */
 function expandContainerIfNeeded(
 	modeling: any,
 	element: any,
-	shapeBounds: { x: number; y: number; width: number; height: number },
+	elementBounds: ElementBounds,
 ): void {
 	const container = findParentContainer(element);
 	if (!container) return;
@@ -237,33 +235,33 @@ function expandContainerIfNeeded(
 	const containerBounds = getElementBounds(container);
 	const padding = 20;
 
-	const shapeRight = shapeBounds.x + shapeBounds.width + padding;
-	const shapeBottom = shapeBounds.y + shapeBounds.height + padding;
-	const shapeTop = shapeBounds.y - padding;
+	const elementRight = elementBounds.x + elementBounds.width + padding;
+	const elementBottom = elementBounds.y + elementBounds.height + padding;
+	const elementTop = elementBounds.y - padding;
 
 	let newWidth = containerBounds.width;
 	let newHeight = containerBounds.height;
 	let newY = containerBounds.y;
 	let changed = false;
 
-	if (shapeRight > containerBounds.x + containerBounds.width) {
-		newWidth = shapeRight - containerBounds.x;
+	if (elementRight > containerBounds.x + containerBounds.width) {
+		newWidth = elementRight - containerBounds.x;
 		changed = true;
 	}
-	if (shapeBottom > containerBounds.y + containerBounds.height) {
-		newHeight = shapeBottom - containerBounds.y;
+	if (elementBottom > containerBounds.y + containerBounds.height) {
+		newHeight = elementBottom - containerBounds.y;
 		changed = true;
 	}
-	if (shapeTop < containerBounds.y) {
-		const topExpand = containerBounds.y - shapeTop;
-		newY = shapeTop;
+	if (elementTop < containerBounds.y) {
+		const topExpand = containerBounds.y - elementTop;
+		newY = elementTop;
 		newHeight = newHeight + topExpand;
 		changed = true;
 	}
 
 	if (changed) {
 		try {
-			modeling.resizeShape(container, {
+			modeling["resizeShape"](container, {
 				x: containerBounds.x,
 				y: newY,
 				width: newWidth,
@@ -278,9 +276,9 @@ function expandContainerIfNeeded(
 /**
  * Collect bounds of all placed data objects and annotations for collision avoidance.
  */
-function collectPlacedShapeBounds(
+function collectPlacedAnnotationBounds(
 	elementRegistry: any,
-): Array<{ x: number; y: number; width: number; height: number }> {
+): ElementBounds[] {
 	return elementRegistry
 		.getAll()
 		.filter(
@@ -345,7 +343,7 @@ export async function createSecurityDataObject(
 
 		if (!annotationText) return;
 
-		const colors = CATEGORY_COLORS[category] || DEFAULT_CATEGORY_COLOR;
+		const colors = getCategoryColor(category);
 		const existingDataObject = elementRegistry.get(dataObjectRefId);
 
 		if (existingDataObject) {
@@ -353,7 +351,7 @@ export async function createSecurityDataObject(
 			if (existingAnnotation) {
 				modeling.updateProperties(existingAnnotation, { text: annotationText });
 				const newSize = estimateAnnotationSize(annotationText);
-				modeling.resizeShape(existingAnnotation, {
+				modeling["resizeShape"](existingAnnotation, {
 					x: existingAnnotation.x,
 					y: existingAnnotation.y,
 					width: newSize.width,
@@ -371,14 +369,14 @@ export async function createSecurityDataObject(
 				: findCreateParent(elementRegistry, element, rootElement);
 
 			const elementBounds = getElementBounds(element);
-			const dataObjectSize = { width: 36, height: 50 };
+			const dataObjectSize: ElementSize = { width: 36, height: 50 };
 			const occupiedBounds = collectOccupiedBounds(elementRegistry);
-			const existingShapeBounds = collectPlacedShapeBounds(elementRegistry);
+			const existingPlacedBounds = collectPlacedAnnotationBounds(elementRegistry);
 
 			// Position data object depending on element type:
 			// - Pools/Lanes: place at the beginning (left side) of the container, stacked vertically
 			// - Tasks/Events: place near the element using collision avoidance
-			let dataObjectPos: { x: number; y: number };
+			let dataObjectPos: Position;
 
 			if (isPoolOrLane) {
 				const existingDOs = elementRegistry
@@ -403,7 +401,7 @@ export async function createSecurityDataObject(
 				dataObjectPos = { x: laneStartX, y: nextY };
 			} else {
 				const annotationSize = estimateAnnotationSize(annotationText);
-				const combinedSize = {
+				const combinedSize: ElementSize = {
 					width: dataObjectSize.width + 25 + annotationSize.width, // Increased annotation gap from 10 to 25
 					height: Math.max(dataObjectSize.height, annotationSize.height),
 				};
@@ -411,18 +409,18 @@ export async function createSecurityDataObject(
 					elementBounds,
 					combinedSize,
 					occupiedBounds,
-					existingShapeBounds,
+					existingPlacedBounds,
 				);
 			}
 
-			const dataObjectRefShape = elementFactory.createShape({
+			const dataObjectRefElement = elementFactory["createShape"]({
 				type: "bpmn:DataObjectReference",
 				id: dataObjectRefId,
 			});
-			dataObjectRefShape.businessObject.name = category;
+			dataObjectRefElement.businessObject.name = category;
 
-			modeling.createShape(
-				dataObjectRefShape,
+			modeling["createShape"](
+				dataObjectRefElement,
 				{
 					x: dataObjectPos.x + dataObjectSize.width / 2,
 					y: dataObjectPos.y + dataObjectSize.height / 2,
@@ -430,7 +428,7 @@ export async function createSecurityDataObject(
 				createParent,
 			);
 
-			modeling.setColor(dataObjectRefShape, colors);
+			modeling.setColor(dataObjectRefElement, colors);
 
 			const isTaskOrEvent =
 				element.type === "bpmn:Task" ||
@@ -439,7 +437,7 @@ export async function createSecurityDataObject(
 
 			if (isTaskOrEvent) {
 				try {
-					modeling.connect(dataObjectRefShape, element, {
+					modeling.connect(dataObjectRefElement, element, {
 						type: "bpmn:DataInputAssociation",
 					});
 				} catch (err) {
@@ -449,18 +447,18 @@ export async function createSecurityDataObject(
 			}
 
 			const annotationSize = estimateAnnotationSize(annotationText);
-			const annotationPos = {
+			const annotationPos: Position = {
 				x: dataObjectPos.x + dataObjectSize.width + 25,
 				y: dataObjectPos.y,
 			};
 
-			const textAnnotation = elementFactory.createShape({
+			const textAnnotation = elementFactory["createShape"]({
 				type: "bpmn:TextAnnotation",
 				id: annotationId,
 			});
 			textAnnotation.businessObject.text = annotationText;
 
-			modeling.createShape(
+			modeling["createShape"](
 				textAnnotation,
 				{
 					x: annotationPos.x + annotationSize.width / 2,
@@ -469,7 +467,7 @@ export async function createSecurityDataObject(
 				createParent,
 			);
 
-			modeling.connect(dataObjectRefShape, textAnnotation, {
+			modeling.connect(dataObjectRefElement, textAnnotation, {
 				type: "bpmn:Association",
 			});
 
@@ -555,12 +553,7 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 		const occupiedBounds = collectOccupiedBounds(elementRegistry);
 
 		// Track where we've placed things to avoid overlaps
-		const placedBounds: Array<{
-			x: number;
-			y: number;
-			width: number;
-			height: number;
-		}> = [];
+		const placedBounds: ElementBounds[] = [];
 
 		// Collect all our data objects (our IDs: DataObjectRef_<elementId>_<category>)
 		const dataObjects = allElements.filter(
@@ -626,9 +619,9 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 
 			if (shift > 10) {
 				for (const child of children) {
-					modeling.moveShape(child, { x: shift, y: 0 });
+					modeling["moveShape"](child, { x: shift, y: 0 });
 				}
-				modeling.resizeShape(lane, {
+				modeling["resizeShape"](lane, {
 					x: lb.x,
 					y: lb.y,
 					width: lb.width + shift,
@@ -677,7 +670,7 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 				doX = laneX;
 				doY = nextY;
 			} else {
-				const combinedSize = {
+				const combinedSize: ElementSize = {
 					width: doW + 25 + annSize.width, // Match increased gap from creation
 					height: Math.max(doH, annSize.height),
 				};
@@ -694,7 +687,7 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 			const doDx = doX - dobj.x;
 			const doDy = doY - dobj.y;
 			if (Math.abs(doDx) > 1 || Math.abs(doDy) > 1) {
-				modeling.moveShape(dobj, { x: doDx, y: doDy });
+				modeling["moveShape"](dobj, { x: doDx, y: doDy });
 			}
 
 			if (dobj.label) {
@@ -703,7 +696,7 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 				const lDx = labelX - dobj.label.x;
 				const lDy = labelY - dobj.label.y;
 				if (Math.abs(lDx) > 1 || Math.abs(lDy) > 1) {
-					modeling.moveShape(dobj.label, { x: lDx, y: lDy });
+					modeling["moveShape"](dobj.label, { x: lDx, y: lDy });
 				}
 			}
 
@@ -721,10 +714,10 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 				const annDy = annY - pairedAnn.y;
 
 				if (Math.abs(annDx) > 1 || Math.abs(annDy) > 1) {
-					modeling.moveShape(pairedAnn, { x: annDx, y: annDy });
+					modeling["moveShape"](pairedAnn, { x: annDx, y: annDy });
 				}
 
-				modeling.resizeShape(pairedAnn, {
+				modeling["resizeShape"](pairedAnn, {
 					x: annX,
 					y: annY,
 					width: annSize.width,
@@ -755,7 +748,7 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 			}
 		}
 
-		// Handle legacy TextAnnotation_{elementId} shapes
+		// Handle legacy TextAnnotation_{elementId} elements
 		const legacyAnnotations = allElements.filter(
 			(el: any) =>
 				el.type === "bpmn:TextAnnotation" &&
@@ -780,9 +773,9 @@ export async function repositionAnnotations(modeler: any): Promise<void> {
 			const dx = pos.x - ann.x;
 			const dy = pos.y - ann.y;
 			if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-				modeling.moveShape(ann, { x: dx, y: dy });
+				modeling["moveShape"](ann, { x: dx, y: dy });
 			}
-			modeling.resizeShape(ann, {
+			modeling["resizeShape"](ann, {
 				x: pos.x,
 				y: pos.y,
 				width: size.width,

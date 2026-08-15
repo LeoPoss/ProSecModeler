@@ -19,8 +19,15 @@ import type {
 interface RequirementSidebarProps {
 	selected: SelectedElement;
 	requirements: Requirement[];
-	onAnswer: (reqId: string, value: string | boolean | null) => void;
+	onAnswer: (
+		reqId: string,
+		value: string | boolean | null | undefined,
+	) => void;
 	onResetElement: () => void;
+}
+
+function isStatusFilter(value: string): value is "all" | "pending" | "done" {
+	return value === "all" || value === "pending" || value === "done";
 }
 
 export default function RequirementSidebar({
@@ -139,9 +146,12 @@ export default function RequirementSidebar({
 				<div className="flex items-center gap-2">
 					<select
 						value={statusFilter}
-						onChange={(e) =>
-							setStatusFilter(e.target.value as "all" | "pending" | "done")
-						}
+						onChange={(e) => {
+							const val = e.target.value;
+							if (isStatusFilter(val)) {
+								setStatusFilter(val);
+							}
+						}}
 						className="px-3 py-1.5 text-xs rounded-md cursor-pointer transition-colors text-neutral-900"
 						style={{
 							background: "#ffffff",

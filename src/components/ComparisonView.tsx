@@ -19,12 +19,19 @@ import {
 	reloadStore,
 	store,
 } from "#/lib/store";
-import type { ComparisonItem, GapStatus, GroupedComparison } from "#/lib/types";
+import type {
+	AnsweredComplianceRequirement,
+	ComparisonItem,
+	GapStatus,
+	GroupedComparison,
+} from "#/lib/types";
 
-function parseBpmnTemplate(template: string): {
+interface ParsedBpmnTemplate {
 	inputType: "BooleanToggle" | "Dropdown" | "TextInput";
 	options: string[] | null;
-} {
+}
+
+function parseBpmnTemplate(template: string): ParsedBpmnTemplate {
 	if (!template) return { inputType: "BooleanToggle", options: null };
 	if (template.startsWith("Dropdown")) {
 		const m = template.match(/\[(.*?)\]/);
@@ -180,7 +187,6 @@ export default function ComparisonView() {
 				elementType: e.type,
 				items: sortItems(items),
 				gapCount: gc,
-				unassessedCount: 0,
 				alignedCount: ac,
 			});
 		}
@@ -247,7 +253,6 @@ export default function ComparisonView() {
 					elementType: orphanType,
 					items: sortItems(items),
 					gapCount: gc,
-					unassessedCount: 0,
 					alignedCount: items.filter((i) => i.status === "aligned").length,
 				});
 			}
@@ -410,7 +415,10 @@ export default function ComparisonView() {
 								<button
 									type="button"
 									key={k}
-									onClick={() => setFilter(k.toLowerCase() as typeof filter)}
+									onClick={() => {
+										if (k === "Gaps") setFilter("gaps");
+										else setFilter("all");
+									}}
 									className={`text-xs font-medium px-2.5 py-1 rounded transition-colors ${
 										isActive
 											? k === "Gaps"

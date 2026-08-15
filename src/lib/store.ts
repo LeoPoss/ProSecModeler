@@ -1,4 +1,6 @@
+import { Result } from "better-result";
 import { atom, getDefaultStore } from "jotai";
+import { api } from "./api";
 import { BASE_URL } from "./constants";
 import type {
 	AnsweredComplianceRequirement,
@@ -46,6 +48,12 @@ export const loadingAtom = atom<boolean>(false);
 
 const baseStore = getDefaultStore();
 
+export interface OverallProgress {
+	answered: number;
+	total: number;
+	percentage: number;
+}
+
 class Store {
 	constructor() {}
 
@@ -55,65 +63,85 @@ class Store {
 
 	async init(): Promise<void> {
 		baseStore.set(loadingAtom, true);
-		try {
-			await this.fetchComplianceRequirements();
-			await this.fetchBusinessProcesses();
-			await this.fetchAuditAssessments();
 
-			const bp = await this.loadLatestBusinessProcess();
+		const result = await Result.gen(async function* () {
+			yield* Result.await(
+				Result.allAsync([
+					store.fetchComplianceRequirementsResult(),
+					store.fetchBusinessProcessesResult(),
+					store.fetchAuditAssessmentsResult(),
+				]),
+			);
+
+			const bp = await store.loadLatestBusinessProcess();
 			if (bp) {
 				const auditAssessmentsList = baseStore
 					.get(auditAssessmentsAtom)
 					.filter((a) => a.processId === bp.id);
+
 				if (auditAssessmentsList.length > 0) {
 					baseStore.set(auditAssessmentIdAtom, auditAssessmentsList[0].id);
 					baseStore.set(auditTypeAtom, auditAssessmentsList[0].auditType);
 				} else {
-					const createdId = await this.createAuditAssessmentSilent("To-Be");
-					await this.fetchAuditAssessments();
+					const createdId = await store.createAuditAssessmentSilent("To-Be");
+					await store.fetchAuditAssessmentsResult();
 					baseStore.set(auditAssessmentIdAtom, createdId);
 					baseStore.set(auditTypeAtom, "To-Be");
 				}
-				await this.fetchAssessmentValues();
+				await store.fetchAssessmentValues();
 			} else {
 				baseStore.set(businessProcessIdAtom, null);
 				baseStore.set(bpmnXmlAtom, "");
 				baseStore.set(auditAssessmentIdAtom, null);
 			}
-		} catch (err) {
-			console.error("Store initialization failed:", err);
-		} finally {
-			baseStore.set(loadingAtom, false);
-		}
+
+			return Result.ok();
+		});
+
+		result.match({
+			ok: () => {},
+			err: (error) => console.error("Store initialization failed:", error),
+		});
+
+		baseStore.set(loadingAtom, false);
 	}
 
 	async reload(): Promise<void> {
 		baseStore.set(loadingAtom, true);
 		baseStore.set(selectedElementAtom, null);
-		try {
-			await this.fetchComplianceRequirements();
-			await this.fetchBusinessProcesses();
-			await this.fetchAuditAssessments();
+
+		const result = await Result.gen(async function* () {
+			yield* Result.await(
+				Result.allAsync([
+					store.fetchComplianceRequirementsResult(),
+					store.fetchBusinessProcessesResult(),
+					store.fetchAuditAssessmentsResult(),
+				]),
+			);
 
 			const bpId = baseStore.get(businessProcessIdAtom);
 			if (bpId) {
-				const bpRes = await fetch(`${BASE_URL}/business-processes/${bpId}`);
-				if (bpRes.ok) {
-					const bp = await bpRes.json();
-					if (bp && bp.bpmnDefinition) {
-						baseStore.set(bpmnXmlAtom, bp.bpmnDefinition);
-					}
+				const bpRes = await api.get<{ bpmnDefinition?: string }>(
+					`${BASE_URL}/business-processes/${bpId}`,
+				);
+				if (bpRes.isOk() && bpRes.value.bpmnDefinition) {
+					baseStore.set(bpmnXmlAtom, bpRes.value.bpmnDefinition);
 				}
 			}
 
 			if (baseStore.get(auditAssessmentIdAtom)) {
-				await this.fetchAssessmentValues();
+				await store.fetchAssessmentValues();
 			}
-		} catch (err) {
-			console.error("Reload failed:", err);
-		} finally {
-			baseStore.set(loadingAtom, false);
-		}
+
+			return Result.ok();
+		});
+
+		result.match({
+			ok: () => {},
+			err: (error) => console.error("Reload failed:", error),
+		});
+
+		baseStore.set(loadingAtom, false);
 	}
 
 	getAuditAssessmentId() {
@@ -140,28 +168,24 @@ class Store {
 		baseStore.set(answeredComplianceRequirementsAtom, []);
 
 		if (id) {
-			try {
-				const bpRes = await fetch(`${BASE_URL}/business-processes/${id}`);
-				if (bpRes.ok) {
-					const bp = await bpRes.json();
-					if (bp && bp.bpmnDefinition) {
-						baseStore.set(bpmnXmlAtom, bp.bpmnDefinition);
-					}
-				}
-			} catch (err) {
-				console.error("Failed to sync business process XML:", err);
+			const bpRes = await api.get<{ id: number; bpmnDefinition?: string }>(
+				`${BASE_URL}/business-processes/${id}`,
+			);
+			if (bpRes.isOk() && bpRes.value.bpmnDefinition) {
+				baseStore.set(bpmnXmlAtom, bpRes.value.bpmnDefinition);
 			}
 
-			await this.fetchAuditAssessments();
+			await this.fetchAuditAssessmentsResult();
 			const auditAssessmentsList = baseStore
 				.get(auditAssessmentsAtom)
 				.filter((a) => a.processId === id);
+
 			if (auditAssessmentsList.length > 0) {
 				baseStore.set(auditAssessmentIdAtom, auditAssessmentsList[0].id);
 				baseStore.set(auditTypeAtom, auditAssessmentsList[0].auditType);
 			} else {
 				const createdId = await this.createAuditAssessmentSilent("To-Be");
-				await this.fetchAuditAssessments();
+				await this.fetchAuditAssessmentsResult();
 				baseStore.set(auditAssessmentIdAtom, createdId);
 				baseStore.set(auditTypeAtom, "To-Be");
 			}
@@ -177,7 +201,7 @@ class Store {
 		baseStore.set(loadingAtom, true);
 		try {
 			const id = await this.saveBusinessProcess(name, xml);
-			await this.fetchBusinessProcesses();
+			await this.fetchBusinessProcessesResult();
 			await this.setBusinessProcessId(id);
 			return id;
 		} catch (err) {
@@ -192,38 +216,43 @@ class Store {
 		const auditId = baseStore.get(auditAssessmentIdAtom);
 		if (auditId) return auditId;
 
-		try {
-			const bpId = baseStore.get(businessProcessIdAtom);
-			let existing = baseStore
-				.get(auditAssessmentsAtom)
-				.find((a) => a.processId === bpId);
-			if (!existing) {
-				const list = await this.fetchAuditAssessments();
-				existing = list.find((a) => a.processId === bpId);
-			}
+		const bpId = baseStore.get(businessProcessIdAtom);
+		let existing = baseStore
+			.get(auditAssessmentsAtom)
+			.find((a) => a.processId === bpId);
 
-			if (existing) {
-				baseStore.set(auditAssessmentIdAtom, existing.id);
-				baseStore.set(auditTypeAtom, existing.auditType);
-				return existing.id;
+		if (!existing) {
+			const listRes = await this.fetchAuditAssessmentsResult();
+			if (listRes.isOk()) {
+				existing = listRes.value.find((a) => a.processId === bpId);
 			}
-
-			const createdId = await this.createAuditAssessmentSilent("To-Be");
-			await this.fetchAuditAssessments();
-			baseStore.set(auditAssessmentIdAtom, createdId);
-			baseStore.set(auditTypeAtom, "To-Be");
-			return createdId;
-		} catch (err) {
-			console.error("Failed to ensure audit assessment:", err);
-			throw err;
 		}
+
+		if (existing) {
+			baseStore.set(auditAssessmentIdAtom, existing.id);
+			baseStore.set(auditTypeAtom, existing.auditType);
+			return existing.id;
+		}
+
+		const createdId = await this.createAuditAssessmentSilent("To-Be");
+		await this.fetchAuditAssessmentsResult();
+		baseStore.set(auditAssessmentIdAtom, createdId);
+		baseStore.set(auditTypeAtom, "To-Be");
+		return createdId;
 	}
 
-	async fetchAuditAssessments(): Promise<any[]> {
-		try {
-			const res = await fetch(`${BASE_URL}/audit-assessments`);
-			const data = await res.json();
-			const mapped = data.map((a: any) => ({
+	async fetchAuditAssessmentsResult() {
+		const res = await api.get<
+			Array<{
+				id: number;
+				auditType: string;
+				processId: number | null;
+				processName: string | null;
+			}>
+		>(`${BASE_URL}/audit-assessments`);
+
+		return res.map((data) => {
+			const mapped = data.map((a) => ({
 				id: a.id,
 				auditType: a.auditType,
 				processId: a.processId,
@@ -231,27 +260,37 @@ class Store {
 			}));
 			baseStore.set(auditAssessmentsAtom, mapped);
 			return mapped;
-		} catch (err) {
-			console.error("Failed to fetch audit assessments:", err);
-			return [];
-		}
+		});
 	}
 
-	async fetchBusinessProcesses(): Promise<{ id: number; name: string }[]> {
-		try {
-			const res = await fetch(`${BASE_URL}/business-processes`);
-			const data = await res.json();
-			const mapped = data.map((bp: any) => ({
+	async fetchAuditAssessments(): Promise<any[]> {
+		const res = await this.fetchAuditAssessmentsResult();
+		return res.unwrapOr([]);
+	}
+
+	async fetchBusinessProcessesResult() {
+		const res = await api.get<
+			Array<{
+				id: number;
+				name?: string;
+				processName?: string;
+			}>
+		>(`${BASE_URL}/business-processes`);
+
+		return res.map((data) => {
+			const mapped = data.map((bp) => ({
 				id: bp.id,
-				name: bp.processName || bp.name,
-				processName: bp.processName || bp.name,
+				name: bp.processName || bp.name || `Process ${bp.id}`,
+				processName: bp.processName || bp.name || `Process ${bp.id}`,
 			}));
 			baseStore.set(businessProcessesAtom, mapped);
 			return mapped;
-		} catch (err) {
-			console.error("Failed to fetch business processes:", err);
-			return [];
-		}
+		});
+	}
+
+	async fetchBusinessProcesses(): Promise<{ id: number; name: string }[]> {
+		const res = await this.fetchBusinessProcessesResult();
+		return res.unwrapOr([]);
 	}
 
 	async setAuditAssessment(id: number): Promise<void> {
@@ -260,34 +299,26 @@ class Store {
 		baseStore.set(selectedElementAtom, null);
 		baseStore.set(answeredComplianceRequirementsAtom, []);
 
-		try {
-			let audit = baseStore.get(auditAssessmentsAtom).find((a) => a.id === id);
-			if (!audit) {
-				const list = await this.fetchAuditAssessments();
-				audit = list.find((a) => a.id === id);
-			}
+		let audit = baseStore.get(auditAssessmentsAtom).find((a) => a.id === id);
+		if (!audit) {
+			const list = await this.fetchAuditAssessments();
+			audit = list.find((a) => a.id === id);
+		}
 
-			if (audit) {
-				baseStore.set(auditTypeAtom, audit.auditType);
-				const bpId = baseStore.get(businessProcessIdAtom);
-				if (audit.processId && audit.processId !== bpId) {
-					const bpRes = await fetch(
-						`${BASE_URL}/business-processes/${audit.processId}`,
-					);
-					if (bpRes.ok) {
-						const bp = await bpRes.json();
-						if (bp && bp.bpmnDefinition) {
-							baseStore.set(businessProcessIdAtom, bp.id);
-							baseStore.set(bpmnXmlAtom, bp.bpmnDefinition);
-						}
-					}
+		if (audit) {
+			baseStore.set(auditTypeAtom, audit.auditType);
+			const bpId = baseStore.get(businessProcessIdAtom);
+			if (audit.processId && audit.processId !== bpId) {
+				const bpRes = await api.get<{
+					id: number;
+					bpmnDefinition?: string;
+				}>(`${BASE_URL}/business-processes/${audit.processId}`);
+
+				if (bpRes.isOk() && bpRes.value.bpmnDefinition) {
+					baseStore.set(businessProcessIdAtom, bpRes.value.id);
+					baseStore.set(bpmnXmlAtom, bpRes.value.bpmnDefinition);
 				}
 			}
-		} catch (err) {
-			console.error(
-				"Failed to sync business process on audit assessment change:",
-				err,
-			);
 		}
 
 		await this.fetchAssessmentValues();
@@ -298,16 +329,21 @@ class Store {
 		type: string = "To-Be",
 	): Promise<number> {
 		const bpId = baseStore.get(businessProcessIdAtom);
-		const res = await fetch(`${BASE_URL}/audit-assessments`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
+		const res = await api.post<{ id: number }>(
+			`${BASE_URL}/audit-assessments`,
+			{
 				auditType: type,
 				processId: bpId || null,
-			}),
+			},
+		);
+
+		return res.match({
+			ok: (created) => created.id,
+			err: (error) => {
+				console.error("Failed to create audit assessment:", error);
+				throw new Error(error.message);
+			},
 		});
-		const created: { id: number } = await res.json();
-		return created.id;
 	}
 
 	async createAuditAssessment(
@@ -316,7 +352,7 @@ class Store {
 		baseStore.set(loadingAtom, true);
 		try {
 			const id = await this.createAuditAssessmentSilent(type);
-			await this.fetchAuditAssessments();
+			await this.fetchAuditAssessmentsResult();
 			baseStore.set(auditAssessmentIdAtom, id);
 			baseStore.set(auditTypeAtom, type);
 			baseStore.set(answeredComplianceRequirementsAtom, []);
@@ -331,32 +367,37 @@ class Store {
 
 	async saveBusinessProcess(name: string, xml?: string): Promise<number> {
 		const bpmnXml = xml ?? baseStore.get(bpmnXmlAtom);
-		const res = await fetch(`${BASE_URL}/business-processes`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ processName: name, bpmnDefinition: bpmnXml }),
+		const res = await api.post<{ id: number }>(
+			`${BASE_URL}/business-processes`,
+			{ processName: name, bpmnDefinition: bpmnXml },
+		);
+
+		return res.match({
+			ok: (created) => created.id,
+			err: (error) => {
+				console.error("Failed to save business process:", error);
+				throw new Error(error.message);
+			},
 		});
-		const created: { id: number } = await res.json();
-		return created.id;
 	}
 
 	async updateBusinessProcess(id: number, xml?: string): Promise<void> {
 		const bpmnXml = xml ?? baseStore.get(bpmnXmlAtom);
 		if (xml) baseStore.set(bpmnXmlAtom, xml);
-		await fetch(`${BASE_URL}/business-processes/${id}`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ bpmnDefinition: bpmnXml }),
+
+		const res = await api.put(`${BASE_URL}/business-processes/${id}`, {
+			bpmnDefinition: bpmnXml,
 		});
+
+		if (res.isErr()) {
+			console.error("Failed to update business process:", res.error);
+		}
 	}
 
 	async deleteBusinessProcess(id: number): Promise<void> {
-		const res = await fetch(`${BASE_URL}/business-processes/${id}`, {
-			method: "DELETE",
-		});
-		if (!res.ok) {
-			const body = await res.json().catch(() => ({}));
-			throw new Error(body.error || `HTTP ${res.status}`);
+		const res = await api.delete(`${BASE_URL}/business-processes/${id}`);
+		if (res.isErr()) {
+			throw new Error(res.error.message);
 		}
 	}
 
@@ -365,19 +406,18 @@ class Store {
 		processName: string;
 		bpmnDefinition: string | null;
 	} | null> {
-		try {
-			const res = await fetch(`${BASE_URL}/business-processes?latest=true`);
-			if (!res.ok) return null;
-			const bp = await res.json();
-			if (bp) {
-				baseStore.set(businessProcessIdAtom, bp.id);
-				baseStore.set(bpmnXmlAtom, bp.bpmnDefinition || "");
-			}
-			return bp;
-		} catch (err) {
-			console.error("Failed to load latest business process:", err);
-			return null;
+		const res = await api.get<{
+			id: number;
+			processName: string;
+			bpmnDefinition: string | null;
+		} | null>(`${BASE_URL}/business-processes`, { params: { latest: "true" } });
+
+		if (res.isOk() && res.value) {
+			baseStore.set(businessProcessIdAtom, res.value.id);
+			baseStore.set(bpmnXmlAtom, res.value.bpmnDefinition || "");
+			return res.value;
 		}
+		return null;
 	}
 
 	getComplianceRequirements() {
@@ -388,53 +428,63 @@ class Store {
 		baseStore.set(complianceRequirementsAtom, data);
 	}
 
-	async fetchComplianceRequirements(): Promise<void> {
-		try {
-			const res = await fetch(`${BASE_URL}/evaluation-attributes`);
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data: ComplianceRequirement[] = await res.json();
+	async fetchComplianceRequirementsResult() {
+		const res = await api.get<ComplianceRequirement[]>(
+			`${BASE_URL}/evaluation-attributes`,
+		);
+		return res.map((data) => {
 			this.setComplianceRequirements(data);
-		} catch (err) {
-			console.error("Failed to fetch compliance requirements from API:", err);
+			return data;
+		});
+	}
+
+	async fetchComplianceRequirements(): Promise<void> {
+		const res = await this.fetchComplianceRequirementsResult();
+		if (res.isErr()) {
+			console.error(
+				"Failed to fetch compliance requirements:",
+				res.error.message,
+			);
 		}
 	}
 
 	async fetchAssessmentValues(): Promise<void> {
 		const auditId = await this.ensureAuditAssessment();
-		try {
-			const bpId = baseStore.get(businessProcessIdAtom);
-			let url = `${BASE_URL}/audit-assessments/${auditId}/values`;
-			if (bpId) {
-				url += `?process_id=${bpId}`;
-			}
-			const res = await fetch(url);
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const rows: {
+		const bpId = baseStore.get(businessProcessIdAtom);
+
+		const res = await api.get<
+			Array<{
 				assessmentId: number;
 				attributeId: number;
 				processElementId: number;
 				bpmnElementId: string;
 				recordedValue: string | null;
-			}[] = await res.json();
+			}>
+		>(`${BASE_URL}/audit-assessments/${auditId}/values`, {
+			params: bpId ? { process_id: bpId } : undefined,
+		});
 
-			const answered: AnsweredComplianceRequirement[] = [];
-			for (const row of rows) {
-				const finalVal = row.recordedValue;
-				let parsedValue: string | boolean | null = finalVal;
-				if (finalVal === "true") parsedValue = true;
-				else if (finalVal === "false") parsedValue = false;
+		res.match({
+			ok: (rows) => {
+				const answered: AnsweredComplianceRequirement[] = rows.map((row) => {
+					const finalVal = row.recordedValue;
+					let parsedValue: string | boolean | null = finalVal;
+					if (finalVal === "true") parsedValue = true;
+					else if (finalVal === "false") parsedValue = false;
 
-				answered.push({
-					elementId: row.bpmnElementId,
-					requirementId: String(row.attributeId),
-					value: parsedValue,
+					return {
+						elementId: row.bpmnElementId,
+						requirementId: String(row.attributeId),
+						value: parsedValue,
+					};
 				});
-			}
 
-			baseStore.set(answeredComplianceRequirementsAtom, answered);
-		} catch (err) {
-			console.error("Failed to fetch assessment values:", err);
-		}
+				baseStore.set(answeredComplianceRequirementsAtom, answered);
+			},
+			err: (error) => {
+				console.error("Failed to fetch assessment values:", error);
+			},
+		});
 	}
 
 	getAnsweredComplianceRequirements() {
@@ -454,31 +504,23 @@ class Store {
 	) {
 		const auditId = await this.ensureAuditAssessment();
 		const bpId = baseStore.get(businessProcessIdAtom);
+		const wertVal =
+			value === undefined || value === null ? null : String(value);
 
-		try {
-			const wertVal =
-				value === undefined || value === null ? null : String(value);
-			const res = await fetch(
-				`${BASE_URL}/audit-assessments/${auditId}/values`,
-				{
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						attributeId: parseInt(requirementId, 10),
-						bpmnElementId: elementId,
-						elementType: elementType || "",
-						elementName: elementName || elementId,
-						processId: bpId || undefined,
-						recordedValue: wertVal,
-					}),
-				},
-			);
-			if (!res.ok) {
-				console.error(`Failed to persist answer: HTTP ${res.status}`);
-				return;
-			}
-		} catch (err) {
-			console.error("Failed to persist answer:", err);
+		const res = await api.put(
+			`${BASE_URL}/audit-assessments/${auditId}/values`,
+			{
+				attributeId: parseInt(requirementId, 10),
+				bpmnElementId: elementId,
+				elementType: elementType || "",
+				elementName: elementName || elementId,
+				processId: bpId || undefined,
+				recordedValue: wertVal,
+			},
+		);
+
+		if (res.isErr()) {
+			console.error("Failed to persist answer:", res.error);
 			return;
 		}
 
@@ -565,11 +607,7 @@ class Store {
 		return result;
 	}
 
-	getOverallProgress(): {
-		answered: number;
-		total: number;
-		percentage: number;
-	} {
+	getOverallProgress(): OverallProgress {
 		const elements = this.getElementsWithQuestions();
 		let total = 0;
 		let answered = 0;
@@ -608,7 +646,7 @@ class Store {
 				return requirementsList.filter((r) => r.bpmn_mapping.pool);
 			default:
 				return [];
-		}
+			}
 	}
 
 	getProgressForElement(elementId: string, elementType: string) {
@@ -632,15 +670,9 @@ class Store {
 	async fetchValuesForAssessment(
 		assessmentId: number,
 	): Promise<AnsweredComplianceRequirement[]> {
-		try {
-			const bpId = baseStore.get(businessProcessIdAtom);
-			let url = `${BASE_URL}/audit-assessments/${assessmentId}/values`;
-			if (bpId) {
-				url += `?process_id=${bpId}`;
-			}
-			const res = await fetch(url);
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const rows: {
+		const bpId = baseStore.get(businessProcessIdAtom);
+		const res = await api.get<
+			Array<{
 				assessmentId: number;
 				attributeId: number;
 				processElementId: number;
@@ -648,31 +680,35 @@ class Store {
 				elementType: string;
 				elementName: string | null;
 				recordedValue: string | null;
-			}[] = await res.json();
+			}>
+		>(`${BASE_URL}/audit-assessments/${assessmentId}/values`, {
+			params: bpId ? { process_id: bpId } : undefined,
+		});
 
-			const answered: AnsweredComplianceRequirement[] = [];
-			for (const row of rows) {
-				const finalVal = row.recordedValue;
-				let parsedValue: string | boolean | null = finalVal;
-				if (finalVal === "true") parsedValue = true;
-				else if (finalVal === "false") parsedValue = false;
+		return res.match({
+			ok: (rows) =>
+				rows.map((row) => {
+					const finalVal = row.recordedValue;
+					let parsedValue: string | boolean | null = finalVal;
+					if (finalVal === "true") parsedValue = true;
+					else if (finalVal === "false") parsedValue = false;
 
-				answered.push({
-					elementId: row.bpmnElementId,
-					requirementId: String(row.attributeId),
-					value: parsedValue,
-					elementType: row.elementType,
-					elementName: row.elementName ?? undefined,
-				});
-			}
-			return answered;
-		} catch (err) {
-			console.error(
-				`Failed to fetch values for assessment ${assessmentId}:`,
-				err,
-			);
-			return [];
-		}
+					return {
+						elementId: row.bpmnElementId,
+						requirementId: String(row.attributeId),
+						value: parsedValue,
+						elementType: row.elementType,
+						elementName: row.elementName ?? undefined,
+					};
+				}),
+			err: (error) => {
+				console.error(
+					`Failed to fetch values for assessment ${assessmentId}:`,
+					error,
+				);
+				return [];
+			},
+		});
 	}
 
 	subscribe(listener: () => void) {

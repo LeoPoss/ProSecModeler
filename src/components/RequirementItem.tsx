@@ -35,7 +35,7 @@ interface RequirementItemProps {
 	req: Requirement;
 	subcategory?: string;
 	answer: string | boolean | null | undefined;
-	onAnswer: (reqId: string, value: string | boolean | null) => void;
+	onAnswer: (reqId: string, value: string | boolean | null | undefined) => void;
 }
 
 export default function RequirementItem({
@@ -161,7 +161,7 @@ export default function RequirementItem({
 				{template.type === "dropdown" && (
 					<div className="flex gap-2 items-start">
 						<Select
-							value={(answer as string) || ""}
+							value={answer !== null && answer !== undefined ? String(answer) : ""}
 							onValueChange={(value: string) => onAnswer(req.id, value)}
 						>
 							<SelectTrigger
@@ -217,7 +217,7 @@ export default function RequirementItem({
 				{template.type === "text" && (
 					<div className="flex gap-2 items-start">
 						<InlineList
-							value={(isNotRelevant ? "" : (answer as string)) || ""}
+							value={isNotRelevant || answer === null || answer === undefined ? "" : String(answer)}
 							onChange={(value: string) => onAnswer(req.id, value || null)}
 							disabled={isNotRelevant}
 							className="flex-1"

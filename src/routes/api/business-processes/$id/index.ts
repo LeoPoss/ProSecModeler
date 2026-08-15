@@ -1,101 +1,214 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Result } from "better-result";
 import { eq } from "drizzle-orm";
 import { db } from "#/db/connection";
 import { businessProcesses } from "#/db/schema";
+import { DatabaseError, ValidationError } from "#/lib/errors";
+
+interface BusinessProcessUpdates {
+	processName?: string;
+	bpmnDefinition?: string | null;
+}
 
 export const Route = createFileRoute("/api/business-processes/$id/")({
 	server: {
 		handlers: {
 			GET: async ({ params }) => {
 				const id = parseInt(params.id, 10);
-				const row = db
-					.select()
-					.from(businessProcesses)
-					.where(eq(businessProcesses.id, id))
-					.get();
-				if (!row) {
-					return new Response(JSON.stringify({ error: "Not found" }), {
-						status: 404,
+				if (Number.isNaN(id)) {
+					return new Response(JSON.stringify({ error: "Invalid ID parameter" }), {
+						status: 400,
 						headers: { "Content-Type": "application/json" },
 					});
 				}
-				return new Response(JSON.stringify(row), {
-					headers: { "Content-Type": "application/json" },
+
+				const queryResult = Result.try({
+					try: () =>
+						db
+							.select()
+							.from(businessProcesses)
+							.where(eq(businessProcesses.id, id))
+							.get(),
+					catch: (cause) =>
+						new DatabaseError({
+							message: `Failed to query business process ${id}`,
+							cause,
+						}),
+				});
+
+				return queryResult.match({
+					ok: (row) => {
+						if (!row) {
+							return new Response(JSON.stringify({ error: "Not found" }), {
+								status: 404,
+								headers: { "Content-Type": "application/json" },
+							});
+						}
+						return new Response(JSON.stringify(row), {
+							headers: { "Content-Type": "application/json" },
+						});
+					},
+					err: (error) =>
+						new Response(JSON.stringify({ error: error.message }), {
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						}),
 				});
 			},
 
 			PUT: async ({ params, request }) => {
 				const id = parseInt(params.id, 10);
-				const body = (await request.json()) as {
-					processName?: string;
-					bpmnDefinition?: string;
-				};
-
-				const existing = db
-					.select()
-					.from(businessProcesses)
-					.where(eq(businessProcesses.id, id))
-					.get();
-				if (!existing) {
-					return new Response(JSON.stringify({ error: "Not found" }), {
-						status: 404,
+				if (Number.isNaN(id)) {
+					return new Response(JSON.stringify({ error: "Invalid ID parameter" }), {
+						status: 400,
 						headers: { "Content-Type": "application/json" },
 					});
 				}
 
-				const updates: Record<string, unknown> = {};
-				if (body.processName !== undefined)
-					updates.processName = body.processName;
-				if (body.bpmnDefinition !== undefined)
-					updates.bpmnDefinition = body.bpmnDefinition;
-
-				let updated = existing;
-				if (Object.keys(updates).length > 0) {
-					updated = db
-						.update(businessProcesses)
-						.set(updates)
-						.where(eq(businessProcesses.id, id))
-						.returning()
-						.get()!;
-				}
-				return new Response(JSON.stringify(updated), {
-					headers: { "Content-Type": "application/json" },
-				});
-			},
-
-			DELETE: async ({ params }) => {
-				const id = parseInt(params.id, 10);
-
-				const existing = db
-					.select()
-					.from(businessProcesses)
-					.where(eq(businessProcesses.id, id))
-					.get();
-				if (!existing) {
-					return new Response(JSON.stringify({ error: "Not found" }), {
-						status: 404,
-						headers: { "Content-Type": "application/json" },
-					});
-				}
-
-				if (
-					id === 1 ||
-					existing.processName === "Sensor Data Collection Demo"
-				) {
-					return new Response(
-						JSON.stringify({
-							error: "Cannot delete the default process model",
+				const parseResult = await Result.tryPromise({
+					try: () => request.json() as Promise<{
+						processName?: string;
+						bpmnDefinition?: string;
+					}>,
+					catch: (cause) =>
+						new ValidationError({
+							message: "Invalid JSON in request body",
+							issues: cause,
 						}),
+				});
+
+				if (parseResult.isErr()) {
+					return new Response(
+						JSON.stringify({ error: parseResult.error.message }),
 						{
-							status: 403,
+							status: 400,
 							headers: { "Content-Type": "application/json" },
 						},
 					);
 				}
 
-				db.delete(businessProcesses).where(eq(businessProcesses.id, id)).run();
+				const body = parseResult.value;
 
-				return new Response(null, { status: 204 });
+				const updateResult = Result.try({
+					try: () => {
+						const existing = db
+							.select()
+							.from(businessProcesses)
+							.where(eq(businessProcesses.id, id))
+							.get();
+
+						if (!existing) return null;
+
+						const updates: BusinessProcessUpdates = {};
+						if (body.processName !== undefined)
+							updates.processName = body.processName;
+						if (body.bpmnDefinition !== undefined)
+							updates.bpmnDefinition = body.bpmnDefinition;
+
+						let updated = existing;
+						if (Object.keys(updates).length > 0) {
+							updated = db
+								.update(businessProcesses)
+								.set(updates)
+								.where(eq(businessProcesses.id, id))
+								.returning()
+								.get()!;
+						}
+						return updated;
+					},
+					catch: (cause) =>
+						new DatabaseError({
+							message: `Failed to update business process ${id}`,
+							cause,
+						}),
+				});
+
+				return updateResult.match({
+					ok: (updated) => {
+						if (!updated) {
+							return new Response(JSON.stringify({ error: "Not found" }), {
+								status: 404,
+								headers: { "Content-Type": "application/json" },
+							});
+						}
+						return new Response(JSON.stringify(updated), {
+							headers: { "Content-Type": "application/json" },
+						});
+					},
+					err: (error) =>
+						new Response(JSON.stringify({ error: error.message }), {
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						}),
+				});
+			},
+
+			DELETE: async ({ params }) => {
+				const id = parseInt(params.id, 10);
+				if (Number.isNaN(id)) {
+					return new Response(JSON.stringify({ error: "Invalid ID parameter" }), {
+						status: 400,
+						headers: { "Content-Type": "application/json" },
+					});
+				}
+
+				const deleteResult = Result.try({
+					try: () => {
+						const existing = db
+							.select()
+							.from(businessProcesses)
+							.where(eq(businessProcesses.id, id))
+							.get();
+
+						if (!existing) return "NOT_FOUND" as const;
+
+						if (
+							id === 1 ||
+							existing.processName === "Sensor Data Collection Demo"
+						) {
+							return "FORBIDDEN" as const;
+						}
+
+						db.delete(businessProcesses)
+							.where(eq(businessProcesses.id, id))
+							.run();
+
+						return "DELETED" as const;
+					},
+					catch: (cause) =>
+						new DatabaseError({
+							message: `Failed to delete business process ${id}`,
+							cause,
+						}),
+				});
+
+				return deleteResult.match({
+					ok: (status) => {
+						if (status === "NOT_FOUND") {
+							return new Response(JSON.stringify({ error: "Not found" }), {
+								status: 404,
+								headers: { "Content-Type": "application/json" },
+							});
+						}
+						if (status === "FORBIDDEN") {
+							return new Response(
+								JSON.stringify({
+									error: "Cannot delete the default process model",
+								}),
+								{
+									status: 403,
+									headers: { "Content-Type": "application/json" },
+								},
+							);
+						}
+						return new Response(null, { status: 204 });
+					},
+					err: (error) =>
+						new Response(JSON.stringify({ error: error.message }), {
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						}),
+				});
 			},
 		},
 	},

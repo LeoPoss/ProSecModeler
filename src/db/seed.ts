@@ -42,10 +42,12 @@ function bpmnMappingToApplicableFor(
 	return types.join(",");
 }
 
-function parseInputType(template: string): {
+interface ParsedInputType {
 	input_type: string;
 	options: string | null;
-} {
+}
+
+function parseInputType(template: string): ParsedInputType {
 	if (template === "BooleanToggle")
 		return { input_type: "BooleanToggle", options: null };
 	if (template.startsWith("Dropdown")) {
@@ -58,7 +60,6 @@ function parseInputType(template: string): {
 }
 
 async function seed() {
-	// Clear existing data (cascading / all tables)
 	db.delete(assessmentValues).run();
 	db.delete(processElements).run();
 	db.delete(businessProcesses).run();
@@ -82,7 +83,6 @@ async function seed() {
 	let attrCount = 0;
 
 	for (const entry of entries) {
-		// Create Compliance Requirement
 		const req = db
 			.insert(complianceRequirements)
 			.values({
@@ -93,10 +93,8 @@ async function seed() {
 			.returning()
 			.get();
 
-		// Parse input type
 		const { input_type, options } = parseInputType(entry.bpmn_template);
 
-		// Create Evaluation Attribute
 		const attr = db
 			.insert(evaluationAttributes)
 			.values({
@@ -113,7 +111,6 @@ async function seed() {
 			.returning()
 			.get();
 
-		// Link Compliance Requirement ↔ Evaluation Attribute
 		db.insert(complianceRequirementAttributes)
 			.values({
 				requirementId: req.id,
@@ -124,7 +121,6 @@ async function seed() {
 		attrCount++;
 	}
 
-	// Pre-seed "Sensor Data Collection Demo" business process
 	const demoXml = demoBpmnFiles["sensor-data-collection"];
 	const pm = db
 		.insert(businessProcesses)
@@ -135,7 +131,6 @@ async function seed() {
 		.returning()
 		.get();
 
-	// Pre-seed a default "To-Be" audit assessment linked to this demo process
 	db.insert(auditAssessments)
 		.values({
 			auditType: "To-Be",

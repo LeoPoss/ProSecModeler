@@ -43,18 +43,17 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 		const isRepositioningRef = useRef(false);
 
 		const rebuildRef = useRef<(force?: boolean) => Promise<void>>(
-			async () => {},
+			async () => { },
 		);
 		const cleanXmlRef = useRef<() => Promise<string>>(async () => "");
 
 		const rebuildAssessmentAnnotations = useCallback(async (force = false) => {
 			if (!modelerRef.current || (isRepositioningRef.current && !force)) return;
 
-			// Do not run if no definitions are loaded in the modeler yet
 			try {
 				if (
-					typeof modelerRef.current.getDefinitions !== "function" ||
-					!modelerRef.current.getDefinitions()
+					!("getDefinitions" in modelerRef.current) ||
+					!modelerRef.current.getDefinitions?.()
 				) {
 					return;
 				}
@@ -66,26 +65,27 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 			isRepositioningRef.current = true;
 			try {
 				const modeling = modelerRef.current.get("modeling") as any;
-				const elementRegistry = modelerRef.current.get(
-					"elementRegistry",
-				) as any;
+				const elementRegistry = modelerRef.current.get("elementRegistry") as {
+					getAll: () => Array<{ id?: string; type?: string }>;
+					get: (id: string) => any;
+				};
 
 				// 1. Gather and remove existing security annotations only (not original BPMN elements).
-				const shapesToRemove = elementRegistry
+				const elementsToRemove = elementRegistry
 					.getAll()
 					.filter(
-						(el: any) =>
+						(el) =>
 							(el.type === "bpmn:DataObjectReference" &&
 								/^DataObjectRef_\w+_\w/.test(el.id || "")) ||
 							(el.type === "bpmn:TextAnnotation" &&
 								el.id?.startsWith("Annotation_")),
 					);
 
-				for (const shape of shapesToRemove) {
+				for (const targetElement of elementsToRemove) {
 					try {
-						modeling.removeShape(shape);
+						modeling["removeShape"](targetElement);
 					} catch (e) {
-						console.warn("Failed to remove shape:", shape.id, e);
+						console.warn("Failed to remove element:", targetElement.id, e);
 					}
 				}
 
@@ -158,10 +158,10 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 						(e: { newSelection: unknown[] }) => {
 							const element = e.newSelection[0] as
 								| {
-										id: string;
-										type: string;
-										businessObject?: { name?: string };
-								  }
+									id: string;
+									type: string;
+									businessObject?: { name?: string };
+								}
 								| undefined;
 							if (element) {
 								setSelectedElement({
@@ -175,10 +175,8 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 						},
 					);
 
-					const elementRegistry = modelerRef.current.get("elementRegistry");
+					const elementRegistry = modelerRef.current.get("elementRegistry") as any;
 					setElementRegistry(elementRegistry);
-
-					// XML import will be handled by the dedicated react effect below
 
 					setLoading(false);
 					onReady?.(modelerRef.current);
@@ -261,7 +259,7 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 							html,
 						});
 					}
-				} catch (e) {
+				} catch {
 					// Silently fail — overlays are non-critical
 				}
 			};
@@ -287,27 +285,27 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 			isRepositioningRef.current = true;
 			try {
 				const modeling = modelerRef.current.get("modeling") as any;
-				const elementRegistry = modelerRef.current.get(
-					"elementRegistry",
-				) as any;
+				const elementRegistry = modelerRef.current.get("elementRegistry") as {
+					getAll: () => Array<{ id?: string; type?: string }>;
+					get: (id: string) => any;
+				};
 
-				// 1. Gather compliance annotation shapes and connections (our annotations only)
-				const shapesToRemove = elementRegistry
+				// 1. Gather compliance annotation elements and connections (our annotations only)
+				const elementsToRemove = elementRegistry
 					.getAll()
 					.filter(
-						(el: any) =>
+						(el) =>
 							(el.type === "bpmn:DataObjectReference" &&
 								/^DataObjectRef_\w+_\w/.test(el.id || "")) ||
 							(el.type === "bpmn:TextAnnotation" &&
 								el.id?.startsWith("Annotation_")),
 					);
 
-				// Remove shapes
-				for (const shape of shapesToRemove) {
+				for (const targetElement of elementsToRemove) {
 					try {
-						modeling.removeShape(shape);
+						modeling["removeShape"](targetElement);
 					} catch (e) {
-						console.warn("Failed to remove shape:", shape.id, e);
+						console.warn("Failed to remove element:", targetElement.id, e);
 					}
 				}
 
@@ -345,7 +343,6 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 						} catch (e) {
 							console.warn("Failed to center viewport:", e);
 						}
-						// Rebuild annotations after diagram elements are loaded in registry
 						await rebuildAssessmentAnnotations(true);
 					} catch (err) {
 						console.error("Failed to import BPMN:", err);
