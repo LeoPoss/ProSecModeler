@@ -15,12 +15,14 @@ export const Route = createFileRoute("/api/business-processes")({
 				const queryResult = Result.try({
 					try: () => {
 						if (latest === "true") {
-							return db
-								.select()
-								.from(businessProcesses)
-								.orderBy(desc(businessProcesses.id))
-								.limit(1)
-								.get() || null;
+							return (
+								db
+									.select()
+									.from(businessProcesses)
+									.orderBy(desc(businessProcesses.id))
+									.limit(1)
+									.get() || null
+							);
 						}
 						return db
 							.select()
@@ -36,24 +38,19 @@ export const Route = createFileRoute("/api/business-processes")({
 				});
 
 				return queryResult.match({
-					ok: (data) =>
-						new Response(JSON.stringify(data), {
-							headers: { "Content-Type": "application/json" },
-						}),
+					ok: (data) => Response.json(data),
 					err: (error) =>
-						new Response(JSON.stringify({ error: error.message }), {
-							status: 500,
-							headers: { "Content-Type": "application/json" },
-						}),
+						Response.json({ error: error.message }, { status: 500 }),
 				});
 			},
 
 			POST: async ({ request }) => {
 				const parseResult = await Result.tryPromise({
-					try: () => request.json() as Promise<{
-						processName?: string;
-						bpmnDefinition?: string;
-					}>,
+					try: () =>
+						request.json() as Promise<{
+							processName?: string;
+							bpmnDefinition?: string;
+						}>,
 					catch: (cause) =>
 						new ValidationError({
 							message: "Invalid JSON in request body",
@@ -62,23 +59,17 @@ export const Route = createFileRoute("/api/business-processes")({
 				});
 
 				if (parseResult.isErr()) {
-					return new Response(
-						JSON.stringify({ error: parseResult.error.message }),
-						{
-							status: 400,
-							headers: { "Content-Type": "application/json" },
-						},
+					return Response.json(
+						{ error: parseResult.error.message },
+						{ status: 400 },
 					);
 				}
 
 				const body = parseResult.value;
 				if (!body.processName) {
-					return new Response(
-						JSON.stringify({ error: "processName is required" }),
-						{
-							status: 400,
-							headers: { "Content-Type": "application/json" },
-						},
+					return Response.json(
+						{ error: "processName is required" },
+						{ status: 400 },
 					);
 				}
 
@@ -100,16 +91,9 @@ export const Route = createFileRoute("/api/business-processes")({
 				});
 
 				return insertResult.match({
-					ok: (created) =>
-						new Response(JSON.stringify(created), {
-							status: 201,
-							headers: { "Content-Type": "application/json" },
-						}),
+					ok: (created) => Response.json(created, { status: 201 }),
 					err: (error) =>
-						new Response(JSON.stringify({ error: error.message }), {
-							status: 500,
-							headers: { "Content-Type": "application/json" },
-						}),
+						Response.json({ error: error.message }, { status: 500 }),
 				});
 			},
 		},

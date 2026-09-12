@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Result } from "better-result";
 import { eq, like } from "drizzle-orm";
 import { db } from "#/db/connection";
 import {
@@ -6,6 +7,7 @@ import {
 	complianceRequirements,
 	evaluationAttributes,
 } from "#/db/schema";
+import { DatabaseError } from "#/lib/errors";
 
 function typeToApplicableFor(type: string): string {
 	switch (type) {
@@ -70,55 +72,61 @@ export const Route = createFileRoute("/api/evaluation-attributes")({
 				const url = new URL(request.url);
 				const typeParam = url.searchParams.get("type");
 
-				const query = db
-					.select({
-						attribute: evaluationAttributes,
-						requirementDescription: complianceRequirements.description,
-						requirementQuestion: complianceRequirements.question,
-					})
-					.from(evaluationAttributes)
-					.leftJoin(
-						complianceRequirementAttributes,
-						eq(
-							evaluationAttributes.id,
-							complianceRequirementAttributes.attributeId,
-						),
-					)
-					.leftJoin(
-						complianceRequirements,
-						eq(
-							complianceRequirementAttributes.requirementId,
-							complianceRequirements.id,
-						),
-					);
+				const queryResult = Result.try({
+					try: () => {
+						const query = db
+							.select({
+								attribute: evaluationAttributes,
+								requirementDescription: complianceRequirements.description,
+								requirementQuestion: complianceRequirements.question,
+							})
+							.from(evaluationAttributes)
+							.leftJoin(
+								complianceRequirementAttributes,
+								eq(
+									evaluationAttributes.id,
+									complianceRequirementAttributes.attributeId,
+								),
+							)
+							.leftJoin(
+								complianceRequirements,
+								eq(
+									complianceRequirementAttributes.requirementId,
+									complianceRequirements.id,
+								),
+							);
 
-				let rows: {
-					attribute: typeof evaluationAttributes.$inferSelect;
-					requirementDescription: string | null;
-					requirementQuestion: string | null;
-				}[];
+						const rows = typeParam
+							? query
+									.where(
+										like(
+											evaluationAttributes.targetScope,
+											`%${typeToApplicableFor(typeParam)}%`,
+										),
+									)
+									.all()
+							: query.all();
 
-				if (typeParam) {
-					const searchTerm = `%${typeToApplicableFor(typeParam)}%`;
-					rows = query
-						.where(like(evaluationAttributes.targetScope, searchTerm))
-						.all();
-				} else {
-					rows = query.all();
-				}
-
-				const result = rows.map(
-					({ attribute, requirementDescription, requirementQuestion }) => {
-						return toRequirement(
-							attribute,
-							requirementDescription || undefined,
-							requirementQuestion || undefined,
+						return rows.map(
+							({ attribute, requirementDescription, requirementQuestion }) =>
+								toRequirement(
+									attribute,
+									requirementDescription || undefined,
+									requirementQuestion || undefined,
+								),
 						);
 					},
-				);
+					catch: (cause) =>
+						new DatabaseError({
+							message: "Failed to query evaluation attributes",
+							cause,
+						}),
+				});
 
-				return new Response(JSON.stringify(result), {
-					headers: { "Content-Type": "application/json" },
+				return queryResult.match({
+					ok: (data) => Response.json(data),
+					err: (error) =>
+						Response.json({ error: error.message }, { status: 500 }),
 				});
 			},
 		},

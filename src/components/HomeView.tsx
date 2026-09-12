@@ -18,19 +18,13 @@ import RequirementSidebar from "#/components/RequirementSidebar";
 import ResetConfirmDialog from "#/components/ResetConfirmDialog";
 import { createSecurityDataObject } from "#/lib/bpmn-extensions";
 import {
-	answerComplianceRequirement,
 	auditAssessmentIdAtom,
 	auditAssessmentsAtom,
 	bpmnXmlAtom,
 	businessProcessesAtom,
 	businessProcessIdAtom,
-	getAnswersForElement,
-	getComplianceRequirementsForElement,
-	getElementsWithQuestions,
-	getOverallProgress,
 	loadingAtom,
 	selectedElementAtom,
-	setSelectedElement,
 	store,
 } from "#/lib/store";
 
@@ -97,7 +91,9 @@ export default function Home() {
 	};
 
 	const requirements = useMemo(() => {
-		return selected ? getComplianceRequirementsForElement(selected.type) : [];
+		return selected
+			? store.getComplianceRequirementsForElement(selected.type)
+			: [];
 	}, [selected]);
 
 	const handleAnswer = async (
@@ -107,7 +103,7 @@ export default function Home() {
 		if (!selected || !modeler) return;
 		const req = store.getComplianceRequirements().find((r) => r.id === reqId);
 		if (!req) return;
-		answerComplianceRequirement(
+		store.answerComplianceRequirement(
 			selected.id,
 			reqId,
 			value,
@@ -129,9 +125,9 @@ export default function Home() {
 
 	const handleResetElement = () => {
 		if (!selected) return;
-		const answers = getAnswersForElement(selected.id);
+		const answers = store.getAnswersForElement(selected.id);
 		for (const a of answers) {
-			answerComplianceRequirement(
+			store.answerComplianceRequirement(
 				selected.id,
 				a.requirementId,
 				undefined,
@@ -169,8 +165,8 @@ export default function Home() {
 		}
 	};
 
-	const elements = getElementsWithQuestions();
-	const progress = getOverallProgress();
+	const elements = store.getElementsWithQuestions();
+	const progress = store.getOverallProgress();
 
 	const currentNavIndex = useMemo(() => {
 		if (!selected) return -1;
@@ -182,7 +178,7 @@ export default function Home() {
 		name: string;
 		type: string;
 	}) => {
-		setSelectedElement(el);
+		store.setSelectedElement(el);
 		if (isMobile === true) {
 			setSidebarOpen(true);
 		}
@@ -196,7 +192,7 @@ export default function Home() {
 		const newIndex =
 			currentNavIndex <= 0 ? elements.length - 1 : currentNavIndex - 1;
 		const el = elements[newIndex];
-		setSelectedElement({ id: el.id, name: el.name, type: el.type });
+		store.setSelectedElement({ id: el.id, name: el.name, type: el.type });
 		setTimeout(() => {
 			canvasRef.current?.syncSelection();
 		}, 200);
@@ -209,7 +205,7 @@ export default function Home() {
 				? 0
 				: currentNavIndex + 1;
 		const el = elements[newIndex];
-		setSelectedElement({ id: el.id, name: el.name, type: el.type });
+		store.setSelectedElement({ id: el.id, name: el.name, type: el.type });
 		setTimeout(() => {
 			canvasRef.current?.syncSelection();
 		}, 200);
@@ -246,9 +242,9 @@ export default function Home() {
 	const handleDeleteBusinessProcess = async (id: number) => {
 		try {
 			await store.deleteBusinessProcess(id);
-			await store.fetchBusinessProcesses();
+			await store.fetchBusinessProcessesResult();
 			await store.loadLatestBusinessProcess();
-			await store.fetchAuditAssessments();
+			await store.fetchAuditAssessmentsResult();
 		} catch (err) {
 			console.error("Failed to delete business process:", err);
 		}
@@ -266,7 +262,10 @@ export default function Home() {
 		const handleMouseMove = (moveEvent: MouseEvent) => {
 			const deltaY = startY - moveEvent.clientY;
 			const maxHeight = window.innerHeight * 0.8;
-			const newHeight = Math.max(100, Math.min(maxHeight, startHeight + deltaY));
+			const newHeight = Math.max(
+				100,
+				Math.min(maxHeight, startHeight + deltaY),
+			);
 			setComparisonHeight(newHeight);
 		};
 
@@ -306,8 +305,8 @@ export default function Home() {
 					<aside className="hidden lg:flex w-64 flex-col bg-white shrink-0 border-r border-neutral-200">
 						<ProcessNavigator
 							elements={elements.map((el) => {
-								const answers = getAnswersForElement(el.id);
-								const reqs = getComplianceRequirementsForElement(el.type);
+								const answers = store.getAnswersForElement(el.id);
+								const reqs = store.getComplianceRequirementsForElement(el.type);
 								return {
 									...el,
 									answeredCount: answers.length,

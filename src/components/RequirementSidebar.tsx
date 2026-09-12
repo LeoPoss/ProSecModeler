@@ -6,11 +6,7 @@ import {
 import { useAtomValue } from "jotai";
 import { useMemo, useState } from "react";
 import RequirementItem from "#/components/RequirementItem";
-import {
-	answeredComplianceRequirementsAtom,
-	getAnswer,
-	getAnswersForElement,
-} from "#/lib/store";
+import { answeredComplianceRequirementsAtom, store } from "#/lib/store";
 import type {
 	ComplianceRequirement as Requirement,
 	SelectedElement,
@@ -19,10 +15,7 @@ import type {
 interface RequirementSidebarProps {
 	selected: SelectedElement;
 	requirements: Requirement[];
-	onAnswer: (
-		reqId: string,
-		value: string | boolean | null | undefined,
-	) => void;
+	onAnswer: (reqId: string, value: string | boolean | null | undefined) => void;
 	onResetElement: () => void;
 }
 
@@ -62,7 +55,7 @@ export default function RequirementSidebar({
 		return grouped;
 	}, [requirements]);
 
-	const answeredCount = getAnswersForElement(selected.id).length;
+	const answeredCount = store.getAnswersForElement(selected.id).length;
 	const totalCount = requirements.length;
 	const progressPercent =
 		totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0;
@@ -174,7 +167,7 @@ export default function RequirementSidebar({
 						{Object.entries(groupedRequirements).map(([category, reqs]) => {
 							const isCollapsed = collapsedGroups.has(category);
 							const categoryAnswered = reqs.filter(
-								(r) => getAnswer(selected.id, r.id) !== undefined,
+								(r) => store.getAnswer(selected.id, r.id) !== undefined,
 							).length;
 
 							return (
@@ -239,7 +232,8 @@ export default function RequirementSidebar({
 													}
 													if (statusFilter !== "all") {
 														const hasAnswer =
-															getAnswer(selected.id, req.id) !== undefined;
+															store.getAnswer(selected.id, req.id) !==
+															undefined;
 														if (statusFilter === "done" && !hasAnswer)
 															return false;
 														if (statusFilter === "pending" && hasAnswer)
@@ -252,7 +246,7 @@ export default function RequirementSidebar({
 														key={req.id}
 														req={req}
 														subcategory={req.subcategory}
-														answer={getAnswer(selected.id, req.id)}
+														answer={store.getAnswer(selected.id, req.id)}
 														onAnswer={onAnswer}
 													/>
 												))}

@@ -54,12 +54,10 @@ export interface OverallProgress {
 	percentage: number;
 }
 
-class Store {
-	constructor() {}
-
+export const store = {
 	isLoading() {
 		return baseStore.get(loadingAtom);
-	}
+	},
 
 	async init(): Promise<void> {
 		baseStore.set(loadingAtom, true);
@@ -104,7 +102,7 @@ class Store {
 		});
 
 		baseStore.set(loadingAtom, false);
-	}
+	},
 
 	async reload(): Promise<void> {
 		baseStore.set(loadingAtom, true);
@@ -142,24 +140,24 @@ class Store {
 		});
 
 		baseStore.set(loadingAtom, false);
-	}
+	},
 
 	getAuditAssessmentId() {
 		return baseStore.get(auditAssessmentIdAtom);
-	}
+	},
 	getAuditType() {
 		return baseStore.get(auditTypeAtom);
-	}
+	},
 	getAuditAssessments() {
 		return baseStore.get(auditAssessmentsAtom);
-	}
+	},
 
 	getBusinessProcessId() {
 		return baseStore.get(businessProcessIdAtom);
-	}
+	},
 	getBusinessProcesses() {
 		return baseStore.get(businessProcessesAtom);
-	}
+	},
 
 	async setBusinessProcessId(id: number | null): Promise<void> {
 		baseStore.set(loadingAtom, true);
@@ -195,7 +193,7 @@ class Store {
 			baseStore.set(auditAssessmentIdAtom, null);
 		}
 		baseStore.set(loadingAtom, false);
-	}
+	},
 
 	async importBusinessProcess(name: string, xml: string): Promise<number> {
 		baseStore.set(loadingAtom, true);
@@ -210,7 +208,7 @@ class Store {
 		} finally {
 			baseStore.set(loadingAtom, false);
 		}
-	}
+	},
 
 	async ensureAuditAssessment(): Promise<number> {
 		const auditId = baseStore.get(auditAssessmentIdAtom);
@@ -239,7 +237,7 @@ class Store {
 		baseStore.set(auditAssessmentIdAtom, createdId);
 		baseStore.set(auditTypeAtom, "To-Be");
 		return createdId;
-	}
+	},
 
 	async fetchAuditAssessmentsResult() {
 		const res = await api.get<
@@ -261,12 +259,7 @@ class Store {
 			baseStore.set(auditAssessmentsAtom, mapped);
 			return mapped;
 		});
-	}
-
-	async fetchAuditAssessments(): Promise<any[]> {
-		const res = await this.fetchAuditAssessmentsResult();
-		return res.unwrapOr([]);
-	}
+	},
 
 	async fetchBusinessProcessesResult() {
 		const res = await api.get<
@@ -286,12 +279,7 @@ class Store {
 			baseStore.set(businessProcessesAtom, mapped);
 			return mapped;
 		});
-	}
-
-	async fetchBusinessProcesses(): Promise<{ id: number; name: string }[]> {
-		const res = await this.fetchBusinessProcessesResult();
-		return res.unwrapOr([]);
-	}
+	},
 
 	async setAuditAssessment(id: number): Promise<void> {
 		baseStore.set(loadingAtom, true);
@@ -301,8 +289,8 @@ class Store {
 
 		let audit = baseStore.get(auditAssessmentsAtom).find((a) => a.id === id);
 		if (!audit) {
-			const list = await this.fetchAuditAssessments();
-			audit = list.find((a) => a.id === id);
+			const listRes = await this.fetchAuditAssessmentsResult();
+			audit = listRes.unwrapOr([]).find((a) => a.id === id);
 		}
 
 		if (audit) {
@@ -323,11 +311,9 @@ class Store {
 
 		await this.fetchAssessmentValues();
 		baseStore.set(loadingAtom, false);
-	}
+	},
 
-	private async createAuditAssessmentSilent(
-		type: string = "To-Be",
-	): Promise<number> {
+	async createAuditAssessmentSilent(type: string = "To-Be"): Promise<number> {
 		const bpId = baseStore.get(businessProcessIdAtom);
 		const res = await api.post<{ id: number }>(
 			`${BASE_URL}/audit-assessments`,
@@ -344,7 +330,7 @@ class Store {
 				throw new Error(error.message);
 			},
 		});
-	}
+	},
 
 	async createAuditAssessment(
 		type: "To-Be" | "As-Is" = "To-Be",
@@ -363,7 +349,7 @@ class Store {
 			baseStore.set(loadingAtom, false);
 		}
 		return baseStore.get(auditAssessmentIdAtom)!;
-	}
+	},
 
 	async saveBusinessProcess(name: string, xml?: string): Promise<number> {
 		const bpmnXml = xml ?? baseStore.get(bpmnXmlAtom);
@@ -379,7 +365,7 @@ class Store {
 				throw new Error(error.message);
 			},
 		});
-	}
+	},
 
 	async updateBusinessProcess(id: number, xml?: string): Promise<void> {
 		const bpmnXml = xml ?? baseStore.get(bpmnXmlAtom);
@@ -392,14 +378,14 @@ class Store {
 		if (res.isErr()) {
 			console.error("Failed to update business process:", res.error);
 		}
-	}
+	},
 
 	async deleteBusinessProcess(id: number): Promise<void> {
 		const res = await api.delete(`${BASE_URL}/business-processes/${id}`);
 		if (res.isErr()) {
 			throw new Error(res.error.message);
 		}
-	}
+	},
 
 	async loadLatestBusinessProcess(): Promise<{
 		id: number;
@@ -418,15 +404,15 @@ class Store {
 			return res.value;
 		}
 		return null;
-	}
+	},
 
 	getComplianceRequirements() {
 		return baseStore.get(complianceRequirementsAtom);
-	}
+	},
 
 	setComplianceRequirements(data: ComplianceRequirement[]) {
 		baseStore.set(complianceRequirementsAtom, data);
-	}
+	},
 
 	async fetchComplianceRequirementsResult() {
 		const res = await api.get<ComplianceRequirement[]>(
@@ -436,17 +422,7 @@ class Store {
 			this.setComplianceRequirements(data);
 			return data;
 		});
-	}
-
-	async fetchComplianceRequirements(): Promise<void> {
-		const res = await this.fetchComplianceRequirementsResult();
-		if (res.isErr()) {
-			console.error(
-				"Failed to fetch compliance requirements:",
-				res.error.message,
-			);
-		}
-	}
+	},
 
 	async fetchAssessmentValues(): Promise<void> {
 		const auditId = await this.ensureAuditAssessment();
@@ -485,15 +461,15 @@ class Store {
 				console.error("Failed to fetch assessment values:", error);
 			},
 		});
-	}
+	},
 
 	getAnsweredComplianceRequirements() {
 		return baseStore.get(answeredComplianceRequirementsAtom);
-	}
+	},
 
 	setAnsweredComplianceRequirements(data: AnsweredComplianceRequirement[]) {
 		baseStore.set(answeredComplianceRequirementsAtom, data);
-	}
+	},
 
 	async answerComplianceRequirement(
 		elementId: string,
@@ -538,7 +514,7 @@ class Store {
 				return [...prev, { elementId, requirementId, value }];
 			return prev;
 		});
-	}
+	},
 
 	getAnswer(
 		elementId: string,
@@ -550,37 +526,37 @@ class Store {
 				(a) => a.elementId === elementId && a.requirementId === requirementId,
 			);
 		return answer?.value;
-	}
+	},
 
 	getAnswersForElement(elementId: string): AnsweredComplianceRequirement[] {
 		return baseStore
 			.get(answeredComplianceRequirementsAtom)
 			.filter((a) => a.elementId === elementId);
-	}
+	},
 
 	getSelectedElement() {
 		return baseStore.get(selectedElementAtom);
-	}
+	},
 
 	setSelectedElement(element: SelectedElement | null) {
 		baseStore.set(selectedElementAtom, element);
-	}
+	},
 
 	getBpmnXml() {
 		return baseStore.get(bpmnXmlAtom);
-	}
+	},
 
 	setBpmnXml(xml: string) {
 		baseStore.set(bpmnXmlAtom, xml);
-	}
+	},
 
 	setElementRegistry(registry: ElementRegistry) {
 		baseStore.set(elementRegistryAtom, registry);
-	}
+	},
 
 	getElementRegistry(): ElementRegistry | null {
 		return baseStore.get(elementRegistryAtom);
-	}
+	},
 
 	getElementsWithQuestions(): { id: string; name: string; type: string }[] {
 		const registry = baseStore.get(elementRegistryAtom);
@@ -605,7 +581,7 @@ class Store {
 		}
 
 		return result;
-	}
+	},
 
 	getOverallProgress(): OverallProgress {
 		const elements = this.getElementsWithQuestions();
@@ -625,7 +601,7 @@ class Store {
 			total,
 			percentage: total > 0 ? Math.round((answered / total) * 100) : 0,
 		};
-	}
+	},
 
 	getComplianceRequirementsForElement(
 		elementType: string,
@@ -646,8 +622,8 @@ class Store {
 				return requirementsList.filter((r) => r.bpmn_mapping.pool);
 			default:
 				return [];
-			}
-	}
+		}
+	},
 
 	getProgressForElement(elementId: string, elementType: string) {
 		const reqs = this.getComplianceRequirementsForElement(elementType);
@@ -665,7 +641,7 @@ class Store {
 							? ("completed" as const)
 							: ("in-progress" as const),
 		};
-	}
+	},
 
 	async fetchValuesForAssessment(
 		assessmentId: number,
@@ -709,7 +685,7 @@ class Store {
 				return [];
 			},
 		});
-	}
+	},
 
 	subscribe(listener: () => void) {
 		const unsubAnswered = baseStore.sub(
@@ -723,35 +699,5 @@ class Store {
 			unsubXml();
 			unsubLoading();
 		};
-	}
-}
-
-export const store = new Store();
-
-export const getComplianceRequirementsForElement = (type: string) =>
-	store.getComplianceRequirementsForElement(type);
-export const selectedElement = () => store.getSelectedElement();
-export const setSelectedElement = (el: SelectedElement | null) =>
-	store.setSelectedElement(el);
-export const answerComplianceRequirement = (
-	elId: string,
-	reqId: string,
-	val: string | boolean | null | undefined,
-	elType?: string,
-	elName?: string,
-) => store.answerComplianceRequirement(elId, reqId, val, elType, elName);
-export const getAnswer = (elId: string, reqId: string) =>
-	store.getAnswer(elId, reqId);
-export const getAnswersForElement = (elId: string) =>
-	store.getAnswersForElement(elId);
-export const setElementRegistry = (registry: ElementRegistry) =>
-	store.setElementRegistry(registry);
-export const getElementsWithQuestions = () => store.getElementsWithQuestions();
-export const getOverallProgress = () => store.getOverallProgress();
-export const createAuditAssessment = (type: "To-Be" | "As-Is") =>
-	store.createAuditAssessment(type);
-export const reloadStore = () => store.reload();
-export const getProgressForElement = (elId: string, type: string) =>
-	store.getProgressForElement(elId, type);
-export const fetchValuesForAssessment = (id: number) =>
-	store.fetchValuesForAssessment(id);
+	},
+};

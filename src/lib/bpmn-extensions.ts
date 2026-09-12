@@ -120,9 +120,7 @@ function estimateAnnotationSize(text: string): ElementSize {
 /**
  * Collect bounding boxes of all non-annotation, non-data-object elements for collision detection.
  */
-function collectOccupiedBounds(
-	elementRegistry: any,
-): ElementBounds[] {
+function collectOccupiedBounds(elementRegistry: any): ElementBounds[] {
 	const allElements = elementRegistry.getAll();
 	const bounds: ElementBounds[] = [];
 
@@ -276,9 +274,7 @@ function expandContainerIfNeeded(
 /**
  * Collect bounds of all placed data objects and annotations for collision avoidance.
  */
-function collectPlacedAnnotationBounds(
-	elementRegistry: any,
-): ElementBounds[] {
+function collectPlacedAnnotationBounds(elementRegistry: any): ElementBounds[] {
 	return elementRegistry
 		.getAll()
 		.filter(
@@ -371,7 +367,8 @@ export async function createSecurityDataObject(
 			const elementBounds = getElementBounds(element);
 			const dataObjectSize: ElementSize = { width: 36, height: 50 };
 			const occupiedBounds = collectOccupiedBounds(elementRegistry);
-			const existingPlacedBounds = collectPlacedAnnotationBounds(elementRegistry);
+			const existingPlacedBounds =
+				collectPlacedAnnotationBounds(elementRegistry);
 
 			// Position data object depending on element type:
 			// - Pools/Lanes: place at the beginning (left side) of the container, stacked vertically
@@ -489,54 +486,6 @@ export async function createSecurityDataObject(
 	} catch (e) {
 		console.error("Failed to create/update security data object:", e);
 	}
-}
-
-/**
- * Wrapper — delegates to createSecurityDataObject.
- */
-export async function createSecurityAnnotation(
-	modeler: any,
-	element: any,
-	requirement: Requirement,
-	value: string | boolean,
-): Promise<void> {
-	return createSecurityDataObject(modeler, element, requirement, value);
-}
-
-export function getSecurityAnnotations(modeler: any, elementId: string): any[] {
-	if (!modeler) return [];
-
-	try {
-		const elementRegistry = modeler.get("elementRegistry");
-		const allElements = elementRegistry.getAll();
-		// Find all data objects and annotations belonging to this element
-		const prefix = `DataObjectRef_${elementId}_`;
-		const annotPrefix = `Annotation_${elementId}_`;
-		return allElements.filter(
-			(el: any) => el.id?.startsWith(prefix) || el.id?.startsWith(annotPrefix),
-		);
-	} catch (err) {
-		console.error("getSecurityAnnotations failed:", err);
-		return [];
-	}
-}
-
-export function serializeSecurityData(
-	answers: AnsweredRequirement[],
-	requirements: Requirement[],
-): string {
-	const securityData = answers.map((answer) => {
-		const req = requirements.find((r) => r.id === answer.requirementId);
-		return {
-			elementId: answer.elementId,
-			requirementId: answer.requirementId,
-			requirement: req?.requirement || "",
-			value: answer.value,
-			timestamp: new Date().toISOString(),
-		};
-	});
-
-	return JSON.stringify(securityData, null, 2);
 }
 
 /**

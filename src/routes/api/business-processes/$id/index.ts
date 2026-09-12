@@ -16,10 +16,10 @@ export const Route = createFileRoute("/api/business-processes/$id/")({
 			GET: async ({ params }) => {
 				const id = parseInt(params.id, 10);
 				if (Number.isNaN(id)) {
-					return new Response(JSON.stringify({ error: "Invalid ID parameter" }), {
-						status: 400,
-						headers: { "Content-Type": "application/json" },
-					});
+					return Response.json(
+						{ error: "Invalid ID parameter" },
+						{ status: 400 },
+					);
 				}
 
 				const queryResult = Result.try({
@@ -39,37 +39,30 @@ export const Route = createFileRoute("/api/business-processes/$id/")({
 				return queryResult.match({
 					ok: (row) => {
 						if (!row) {
-							return new Response(JSON.stringify({ error: "Not found" }), {
-								status: 404,
-								headers: { "Content-Type": "application/json" },
-							});
+							return Response.json({ error: "Not found" }, { status: 404 });
 						}
-						return new Response(JSON.stringify(row), {
-							headers: { "Content-Type": "application/json" },
-						});
+						return Response.json(row);
 					},
 					err: (error) =>
-						new Response(JSON.stringify({ error: error.message }), {
-							status: 500,
-							headers: { "Content-Type": "application/json" },
-						}),
+						Response.json({ error: error.message }, { status: 500 }),
 				});
 			},
 
 			PUT: async ({ params, request }) => {
 				const id = parseInt(params.id, 10);
 				if (Number.isNaN(id)) {
-					return new Response(JSON.stringify({ error: "Invalid ID parameter" }), {
-						status: 400,
-						headers: { "Content-Type": "application/json" },
-					});
+					return Response.json(
+						{ error: "Invalid ID parameter" },
+						{ status: 400 },
+					);
 				}
 
 				const parseResult = await Result.tryPromise({
-					try: () => request.json() as Promise<{
-						processName?: string;
-						bpmnDefinition?: string;
-					}>,
+					try: () =>
+						request.json() as Promise<{
+							processName?: string;
+							bpmnDefinition?: string;
+						}>,
 					catch: (cause) =>
 						new ValidationError({
 							message: "Invalid JSON in request body",
@@ -78,12 +71,9 @@ export const Route = createFileRoute("/api/business-processes/$id/")({
 				});
 
 				if (parseResult.isErr()) {
-					return new Response(
-						JSON.stringify({ error: parseResult.error.message }),
-						{
-							status: 400,
-							headers: { "Content-Type": "application/json" },
-						},
+					return Response.json(
+						{ error: parseResult.error.message },
+						{ status: 400 },
 					);
 				}
 
@@ -126,30 +116,22 @@ export const Route = createFileRoute("/api/business-processes/$id/")({
 				return updateResult.match({
 					ok: (updated) => {
 						if (!updated) {
-							return new Response(JSON.stringify({ error: "Not found" }), {
-								status: 404,
-								headers: { "Content-Type": "application/json" },
-							});
+							return Response.json({ error: "Not found" }, { status: 404 });
 						}
-						return new Response(JSON.stringify(updated), {
-							headers: { "Content-Type": "application/json" },
-						});
+						return Response.json(updated);
 					},
 					err: (error) =>
-						new Response(JSON.stringify({ error: error.message }), {
-							status: 500,
-							headers: { "Content-Type": "application/json" },
-						}),
+						Response.json({ error: error.message }, { status: 500 }),
 				});
 			},
 
 			DELETE: async ({ params }) => {
 				const id = parseInt(params.id, 10);
 				if (Number.isNaN(id)) {
-					return new Response(JSON.stringify({ error: "Invalid ID parameter" }), {
-						status: 400,
-						headers: { "Content-Type": "application/json" },
-					});
+					return Response.json(
+						{ error: "Invalid ID parameter" },
+						{ status: 400 },
+					);
 				}
 
 				const deleteResult = Result.try({
@@ -185,29 +167,18 @@ export const Route = createFileRoute("/api/business-processes/$id/")({
 				return deleteResult.match({
 					ok: (status) => {
 						if (status === "NOT_FOUND") {
-							return new Response(JSON.stringify({ error: "Not found" }), {
-								status: 404,
-								headers: { "Content-Type": "application/json" },
-							});
+							return Response.json({ error: "Not found" }, { status: 404 });
 						}
 						if (status === "FORBIDDEN") {
-							return new Response(
-								JSON.stringify({
-									error: "Cannot delete the default process model",
-								}),
-								{
-									status: 403,
-									headers: { "Content-Type": "application/json" },
-								},
+							return Response.json(
+								{ error: "Cannot delete the default process model" },
+								{ status: 403 },
 							);
 						}
 						return new Response(null, { status: 204 });
 					},
 					err: (error) =>
-						new Response(JSON.stringify({ error: error.message }), {
-							status: 500,
-							headers: { "Content-Type": "application/json" },
-						}),
+						Response.json({ error: error.message }, { status: 500 }),
 				});
 			},
 		},

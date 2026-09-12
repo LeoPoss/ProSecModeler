@@ -12,13 +12,7 @@ import {
 	createSecurityDataObject,
 	repositionAnnotations,
 } from "#/lib/bpmn-extensions";
-import {
-	getProgressForElement,
-	selectedElement,
-	setElementRegistry,
-	setSelectedElement,
-	store,
-} from "#/lib/store";
+import { store } from "#/lib/store";
 import type {
 	BpmnCanvasHandle,
 	BpmnModeler,
@@ -43,7 +37,7 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 		const isRepositioningRef = useRef(false);
 
 		const rebuildRef = useRef<(force?: boolean) => Promise<void>>(
-			async () => { },
+			async () => {},
 		);
 		const cleanXmlRef = useRef<() => Promise<string>>(async () => "");
 
@@ -158,25 +152,27 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 						(e: { newSelection: unknown[] }) => {
 							const element = e.newSelection[0] as
 								| {
-									id: string;
-									type: string;
-									businessObject?: { name?: string };
-								}
+										id: string;
+										type: string;
+										businessObject?: { name?: string };
+								  }
 								| undefined;
 							if (element) {
-								setSelectedElement({
+								store.setSelectedElement({
 									id: element.id,
 									name: element.businessObject?.name || element.id,
 									type: element.type,
 								});
 							} else {
-								setSelectedElement(null);
+								store.setSelectedElement(null);
 							}
 						},
 					);
 
-					const elementRegistry = modelerRef.current.get("elementRegistry") as any;
-					setElementRegistry(elementRegistry);
+					const elementRegistry = modelerRef.current.get(
+						"elementRegistry",
+					) as any;
+					store.setElementRegistry(elementRegistry);
 
 					setLoading(false);
 					onReady?.(modelerRef.current);
@@ -234,7 +230,7 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 						)
 							continue;
 
-						const progress = getProgressForElement(element.id, type);
+						const progress = store.getProgressForElement(element.id, type);
 						if (progress.total === 0) continue;
 
 						const color =
@@ -367,7 +363,7 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 			let lastId: string | null = null;
 
 			const syncSelection = () => {
-				const sel = selectedElement();
+				const sel = store.getSelectedElement();
 
 				if (!sel) {
 					if (lastId) {
@@ -414,7 +410,7 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 			getModeler: () => modelerRef.current,
 			getXml: getCleanXml,
 			syncSelection: () => {
-				const sel = selectedElement();
+				const sel = store.getSelectedElement();
 				if (!sel || !modelerRef.current) return;
 				const selection = modelerRef.current.get("selection") as any;
 				const canvas = modelerRef.current.get("canvas") as any;
@@ -450,9 +446,7 @@ const BpmnCanvas = forwardRef<BpmnCanvasHandle, BpmnCanvasProps>(
 							<p className="font-semibold mb-2 text-red-600">
 								Failed to load BPMN viewer
 							</p>
-							<p className="text-sm text-red-700">
-								{error}
-							</p>
+							<p className="text-sm text-red-700">{error}</p>
 						</div>
 					</div>
 				)}

@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAuditAssessmentsRouteImport } from './routes/api/audit-assessments'
 import { Route as ApiBusinessProcessesRouteImport } from './routes/api/business-processes'
 import { Route as ApiEvaluationAttributesRouteImport } from './routes/api/evaluation-attributes'
-import { Route as ApiRegulationStandardsRouteImport } from './routes/api/regulation-standards'
 import { Route as ApiAuditAssessmentsIdValuesRouteImport } from './routes/api/audit-assessments/$id/values'
 import { Route as ApiBusinessProcessesIdIndexRouteImport } from './routes/api/business-processes/$id/index'
 
@@ -37,11 +36,6 @@ const ApiEvaluationAttributesRoute = ApiEvaluationAttributesRouteImport.update({
   path: '/api/evaluation-attributes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRegulationStandardsRoute = ApiRegulationStandardsRouteImport.update({
-  id: '/api/regulation-standards',
-  path: '/api/regulation-standards',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAuditAssessmentsIdValuesRoute =
   ApiAuditAssessmentsIdValuesRouteImport.update({
     id: '/$id/values',
@@ -60,7 +54,6 @@ export interface FileRoutesByFullPath {
   '/api/audit-assessments': typeof ApiAuditAssessmentsRouteWithChildren
   '/api/business-processes': typeof ApiBusinessProcessesRouteWithChildren
   '/api/evaluation-attributes': typeof ApiEvaluationAttributesRoute
-  '/api/regulation-standards': typeof ApiRegulationStandardsRoute
   '/api/audit-assessments/$id/values': typeof ApiAuditAssessmentsIdValuesRoute
   '/api/business-processes/$id/': typeof ApiBusinessProcessesIdIndexRoute
 }
@@ -69,7 +62,6 @@ export interface FileRoutesByTo {
   '/api/audit-assessments': typeof ApiAuditAssessmentsRouteWithChildren
   '/api/business-processes': typeof ApiBusinessProcessesRouteWithChildren
   '/api/evaluation-attributes': typeof ApiEvaluationAttributesRoute
-  '/api/regulation-standards': typeof ApiRegulationStandardsRoute
   '/api/audit-assessments/$id/values': typeof ApiAuditAssessmentsIdValuesRoute
   '/api/business-processes/$id': typeof ApiBusinessProcessesIdIndexRoute
 }
@@ -79,7 +71,6 @@ export interface FileRoutesById {
   '/api/audit-assessments': typeof ApiAuditAssessmentsRouteWithChildren
   '/api/business-processes': typeof ApiBusinessProcessesRouteWithChildren
   '/api/evaluation-attributes': typeof ApiEvaluationAttributesRoute
-  '/api/regulation-standards': typeof ApiRegulationStandardsRoute
   '/api/audit-assessments/$id/values': typeof ApiAuditAssessmentsIdValuesRoute
   '/api/business-processes/$id/': typeof ApiBusinessProcessesIdIndexRoute
 }
@@ -90,7 +81,6 @@ export interface FileRouteTypes {
     | '/api/audit-assessments'
     | '/api/business-processes'
     | '/api/evaluation-attributes'
-    | '/api/regulation-standards'
     | '/api/audit-assessments/$id/values'
     | '/api/business-processes/$id/'
   fileRoutesByTo: FileRoutesByTo
@@ -99,7 +89,6 @@ export interface FileRouteTypes {
     | '/api/audit-assessments'
     | '/api/business-processes'
     | '/api/evaluation-attributes'
-    | '/api/regulation-standards'
     | '/api/audit-assessments/$id/values'
     | '/api/business-processes/$id'
   id:
@@ -108,7 +97,6 @@ export interface FileRouteTypes {
     | '/api/audit-assessments'
     | '/api/business-processes'
     | '/api/evaluation-attributes'
-    | '/api/regulation-standards'
     | '/api/audit-assessments/$id/values'
     | '/api/business-processes/$id/'
   fileRoutesById: FileRoutesById
@@ -118,7 +106,6 @@ export interface RootRouteChildren {
   ApiAuditAssessmentsRoute: typeof ApiAuditAssessmentsRouteWithChildren
   ApiBusinessProcessesRoute: typeof ApiBusinessProcessesRouteWithChildren
   ApiEvaluationAttributesRoute: typeof ApiEvaluationAttributesRoute
-  ApiRegulationStandardsRoute: typeof ApiRegulationStandardsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -149,13 +136,6 @@ declare module '@tanstack/react-router' {
       path: '/api/evaluation-attributes'
       fullPath: '/api/evaluation-attributes'
       preLoaderRoute: typeof ApiEvaluationAttributesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/regulation-standards': {
-      id: '/api/regulation-standards'
-      path: '/api/regulation-standards'
-      fullPath: '/api/regulation-standards'
-      preLoaderRoute: typeof ApiRegulationStandardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/audit-assessments/$id/values': {
@@ -202,7 +182,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuditAssessmentsRoute: ApiAuditAssessmentsRouteWithChildren,
   ApiBusinessProcessesRoute: ApiBusinessProcessesRouteWithChildren,
   ApiEvaluationAttributesRoute: ApiEvaluationAttributesRoute,
-  ApiRegulationStandardsRoute: ApiRegulationStandardsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -12,11 +12,6 @@ import {
 	answeredComplianceRequirementsAtom,
 	auditAssessmentsAtom,
 	businessProcessIdAtom,
-	createAuditAssessment,
-	fetchValuesForAssessment,
-	getComplianceRequirementsForElement,
-	getElementsWithQuestions,
-	reloadStore,
 	store,
 } from "#/lib/store";
 import type {
@@ -99,8 +94,12 @@ export default function ComparisonView() {
 		setLoading(true);
 		try {
 			const p: Promise<AnsweredComplianceRequirement[]>[] = [];
-			p.push(toBeId ? fetchValuesForAssessment(toBeId) : Promise.resolve([]));
-			p.push(asIsId ? fetchValuesForAssessment(asIsId) : Promise.resolve([]));
+			p.push(
+				toBeId ? store.fetchValuesForAssessment(toBeId) : Promise.resolve([]),
+			);
+			p.push(
+				asIsId ? store.fetchValuesForAssessment(asIsId) : Promise.resolve([]),
+			);
 			const [t, a] = await Promise.all(p);
 			setToBeAnswers(t);
 			setAsIsAnswers(a);
@@ -117,10 +116,10 @@ export default function ComparisonView() {
 	const create = async (type: "To-Be" | "As-Is") => {
 		setLoading(true);
 		try {
-			const id = await createAuditAssessment(type);
+			const id = await store.createAuditAssessment(type);
 			if (type === "To-Be") setToBeId(id);
 			else setAsIsId(id);
-			await reloadStore();
+			await store.reload();
 		} catch (e) {
 			console.error(e);
 		} finally {
@@ -138,13 +137,13 @@ export default function ComparisonView() {
 	};
 
 	const data = useMemo(() => {
-		const el = getElementsWithQuestions();
+		const el = store.getElementsWithQuestions();
 		const r: GroupedComparison[] = [];
 		const handledIds = new Set<string>();
 
 		for (const e of el) {
 			handledIds.add(e.id);
-			const reqs = getComplianceRequirementsForElement(e.type);
+			const reqs = store.getComplianceRequirementsForElement(e.type);
 			if (!reqs.length) continue;
 			const items: ComparisonItem[] = [];
 			let gc = 0,
